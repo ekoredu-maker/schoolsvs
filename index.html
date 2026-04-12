@@ -3,13 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
-<title>학교폭력 업무 담당자용 업무 처리 보조 프로그램</title>
-<meta name="description" content="학교폭력 업무 담당자용 업무 처리 보조 프로그램" />
-<meta name="theme-color" content="#1f4b7a" />
-<link rel="manifest" href="./manifest.webmanifest" />
-<link rel="icon" href="./assets/icons/favicon.svg" type="image/svg+xml" />
-<link rel="apple-touch-icon" href="./assets/icons/apple-touch-icon.png" />
-
+<title>학교폭력 업무 담당자용 업무 처리 보조 프로그램 (충북 A to Z 반영)</title>
 <style>
   :root{
     --bg:#eef3f8; --card:#ffffff; --line:#d5e0ea; --text:#203040; --muted:#607488;
@@ -172,7 +166,7 @@
 <body>
 <div id="loginScreen">
   <div class="loginBox">
-    <h2 class="loginTitle">🏫 학교폭력 업무 담당자용 업무 처리 보조 프로그램</h2>
+    <h2 class="loginTitle">🏫 학교폭력 업무 담당자용 업무 처리 보조 프로그램 (충북 A to Z 반영)</h2>
     <p class="loginDesc">로컬 저장 전용 보조 프로그램입니다. 기본 비밀번호는 <b>1234</b>이며 설정 화면에서 변경할 수 있습니다.</p>
     <div class="field"><label>비밀번호</label><input id="loginPw" type="password" maxlength="32" placeholder="비밀번호 입력" /></div>
     <div class="btnRow" style="margin-top:12px"><button class="btn primary" onclick="login()">로그인</button></div>
@@ -227,7 +221,7 @@
         </div>
         <div class="card">
           <h3 class="cardTitle">🕘 최근 사안</h3>
-          <div class="tableWrap"><table><thead><tr><th>접수번호</th><th>접수일</th><th>피해학생</th><th>피신고학생</th><th>유형</th><th>단계</th><th class="keep">관리</th></tr></thead><tbody id="dashBody"></tbody></table></div>
+          <div class="tableWrap"><table><thead><tr><th>접수번호</th><th>접수일</th><th>피해관련학생</th><th>가해관련학생</th><th>유형</th><th>단계</th><th class="keep">관리</th></tr></thead><tbody id="dashBody"></tbody></table></div>
         </div>
       </section>
 
@@ -260,19 +254,19 @@
 
         <div class="tabPane" id="pane-victim">
           <div class="card">
-            <h3 class="cardTitle">② 신고학생 / 피해학생</h3>
-            <div class="notice">신고자와 피해학생은 같을 수도, 다를 수도 있습니다. 피해학생이 여러 명이면 추가 버튼으로 계속 입력할 수 있습니다.</div>
+            <h3 class="cardTitle">② 피해관련학생</h3>
+            <div class="notice">피해관련학생이 여러 명이면 추가 버튼으로 계속 입력할 수 있습니다.</div>
             <div id="victimList" class="personList"></div>
-            <div class="btnRow"><button class="btn outline" onclick="addPerson('victim')">➕ 피해학생 추가</button></div>
+            <div class="btnRow"><button class="btn outline" onclick="addPerson('victim')">➕ 피해관련학생 추가</button></div>
           </div>
         </div>
 
         <div class="tabPane" id="pane-perp">
           <div class="card">
-            <h3 class="cardTitle">③ 피신고학생</h3>
-            <div class="notice warn">피신고학생이 여러 명이면 추가 버튼으로 계속 입력할 수 있습니다.</div>
+            <h3 class="cardTitle">③ 가해관련학생</h3>
+            <div class="notice warn">가해관련학생이 여러 명이면 추가 버튼으로 계속 입력할 수 있습니다.</div>
             <div id="perpList" class="personList"></div>
-            <div class="btnRow"><button class="btn outline" onclick="addPerson('perp')">➕ 피신고학생 추가</button></div>
+            <div class="btnRow"><button class="btn outline" onclick="addPerson('perp')">➕ 가해관련학생 추가</button></div>
           </div>
         </div>
 
@@ -288,21 +282,41 @@
         <div class="tabPane" id="pane-measures">
           <div class="card">
             <h3 class="cardTitle">⑤ 초기 조치 / 분리 / 보고</h3>
-            <div class="notice warn">긴급 사안은 즉시 보호조치와 분리조치를 검토하고, 학교폭력 인지 후 48시간 이내 교육(지원)청 보고 여부를 반드시 확인하세요. 성범죄 관련 사안은 예외 없이 수사기관 즉시 신고가 필요합니다.</div>
+            <div class="notice warn">충북 A to Z 기준 초기대응 핵심: 학교장 인지 후 24시간 이내 즉시분리 방법을 결정하고, 가해관련학생 긴급선도조치 2호를 지체 없이 시행하며, 주말 포함 48시간 이내 교육(지원)청 보고 여부를 반드시 확인하세요. 성 사안·아동학대 사안은 수사기관 신고 여부를 즉시 점검하세요.</div>
             <div class="row">
-              <div class="field"><label>긴급분리 여부</label><select id="separation"></select></div>
-              <div class="field"><label>분리 기간</label><input id="sepPeriod" placeholder="예: 2026-04-12 ~ 2026-04-15"></div>
+              <div class="field"><label>즉시분리 여부</label><select id="separation" onchange="toggleSeparationFields()"></select></div>
+              <div class="field"><label>분리기간</label><select id="sepPeriod" disabled></select></div>
               <div class="field"><label>교육지원청 보고</label><select id="officeReport"><option value="">미입력</option><option>보고완료</option><option>보고예정</option><option>보고불필요</option></select></div>
             </div>
             <div class="row">
-              <div class="field"><label>교육지원청 보고일</label><input id="officeDate" type="date"></div>
-              <div class="field"><label>경찰 신고 여부</label><select id="police"><option>미신고</option><option>신고완료</option><option>신고예정</option></select></div>
-              <div class="field"><label>전담기구 / 심의 일정</label><input id="committeeDate" type="date"></div>
+              <div class="field"><label>즉시분리 장소</label><input id="separationPlace" placeholder="예: 상담실, 위클래스, 보건실" disabled></div>
+              <div class="field"><label>즉시분리 미시행 사유</label><select id="sepReason" disabled></select></div>
+              <div class="field"><label>교육지원청 보고일(접수일시로부터 48시간 이내 보고)</label><input id="officeDate" type="date"></div>
+            </div>
+            <div class="card" style="margin-top:14px">
+              <h4 class="cardTitle">긴급조치 여부 <button type="button" class="btn outline" onclick="addEmergencyMeasure()">추가하기</button></h4>
+              <div id="emergencyMeasuresList" class="personList"></div>
             </div>
             <div class="row">
-              <div class="field"><label>학교장 자체해결 검토</label><select id="selfResolve"><option value="">미검토</option><option>자체해결 가능 검토</option><option>심의 요청</option><option>자체해결 완료</option></select><div class="help">자체해결 4요건: 2주 이상 치료 불요, 재산피해 없음·복구, 지속성 없음, 보복행위 아님</div></div>
-              <div class="field"><label>피해학생 보호자 동의</label><select id="parentAgree"><option value="">미확인</option><option>동의</option><option>미동의</option></select></div>
-              <div class="field"><label>초기 조치 체크</label><input id="initialActions" placeholder="예: 보호자 연락, 상담실 분리, 보건실 조치"></div>
+              <div class="field"><label>경찰 신고 여부</label><select id="police"><option>미신고</option><option>신고완료</option><option>신고예정</option></select></div>
+              <div class="field"><label>전담기구 개최일</label><select id="committeeDate"></select><div class="help">접수일시 기준 2주 후, 3주 후(개최 연기 내부결재), 관계회복 숙려제도 운영 시 4주 후까지 선택할 수 있습니다.</div></div>
+              <div class="field"><label class="check"><input id="relationRecoveryUsed" type="checkbox" onchange="updateCommitteeDateOptions($('recvAt').value, $('committeeDate').value)"> 관계회복 숙려제도 운영</label><div class="help">운영 시 전담기구 개최를 최대 4주까지 유예할 수 있습니다.</div></div>
+            </div>
+            <div class="row">
+              <div class="field"><label>가해관련학생 긴급선도조치 2호</label><select id="mandatoryNo2"><option value="">미입력</option><option>시행</option><option>미시행</option></select><div class="help">충북 A to Z 기준: 학교장 인지 시 지체 없이 시행하며, 별도 내부결재는 생략합니다.</div></div>
+              <div class="field full"><label>초기 대응 메모</label><input id="initialActions" placeholder="예: 보호자 연락, 담임 통보, 관련학교 연락, 조사 가능시간 확인"></div>
+            </div>
+            <div class="row">
+              <div class="field full"><label>피해관련학생 측 요구</label>
+                <div id="victimDemandGroup" class="row" style="margin-bottom:6px"></div>
+                <input id="victimDemandOther" class="hidden" placeholder="기타 요구사항 직접 입력">
+              </div>
+            </div>
+            <div class="row">
+              <div class="field full"><label>가해관련학생 측 태도</label>
+                <div id="perpAttitudeGroup" class="row" style="margin-bottom:6px"></div>
+                <input id="perpAttitudeOther" class="hidden" placeholder="기타 태도 직접 입력">
+              </div>
             </div>
             <div class="row">
               <div class="field"><label>피해관련 학생/보호자 통보</label><input id="victimNotify" placeholder="예: 2026.3.9. 유선통보"></div>
@@ -376,14 +390,14 @@
             <div class="field"><label>유형 필터</label><select id="searchType"><option value="">전체</option></select></div>
           </div>
           <div class="btnRow noPrint" style="margin-bottom:12px"><button class="btn outline" onclick="renderCaseTable()">검색</button><button class="btn primary" onclick="showPage('newcase')">신규 접수</button></div>
-          <div class="tableWrap"><table><thead><tr><th>접수번호</th><th>접수일</th><th>피해학생</th><th>피신고학생</th><th>유형</th><th>단계</th><th class="keep">관리</th></tr></thead><tbody id="caseTableBody"></tbody></table></div>
+          <div class="tableWrap"><table><thead><tr><th>접수번호</th><th>접수일</th><th>피해관련학생</th><th>가해관련학생</th><th>유형</th><th>단계</th><th class="keep">관리</th></tr></thead><tbody id="caseTableBody"></tbody></table></div>
         </div>
       </section>
 
       <section class="page" id="page-forms">
-        <div class="pageHead"><div><h1>📄 서식 출력</h1><p>2026 학교폭력 사안처리 가이드북 부록 1의 서식 번호와 서식명을 기준으로 인쇄용 문서를 생성합니다.</p></div></div>
+        <div class="pageHead"><div><h1>📄 서식 출력</h1><p>충청북도교육청 『2026. 학교폭력 사안처리 A to Z』의 서식·공문 번호와 명칭을 기준으로 인쇄용 문서를 생성합니다.</p></div></div>
         <div class="card noPrint">
-          <div class="notice">서식명은 가이드북 부록 1의 번호 체계를 반영했습니다. 실제 제출 전에는 귀 기관이 사용하는 최신 원문 서식과 문구·결재란을 한 번 더 대조하세요.</div>
+          <div class="notice">서식명은 충청북도교육청 『2026. 학교폭력 사안처리 A to Z』의 번호 체계를 우선 반영했습니다. 보조서식은 별도로 표시했으며, 실제 제출 전에는 최신 원문 서식과 문구·결재란을 한 번 더 대조하세요.</div>
           <div class="row">
             <div class="field"><label>사안 선택</label><select id="formCase" onchange="renderFormPreview()"></select></div>
             <div class="field"><label>서식 선택</label><select id="formType" onchange="renderFormPreview()"></select></div>
@@ -394,13 +408,13 @@
       </section>
 
       <section class="page" id="page-ledgers">
-        <div class="pageHead"><div><h1>📚 대장 관리</h1><p>가이드북 원문 표제에 맞춘 대장 화면입니다. 신고 접수 대장, 조사관 자료 관리 대장, 가해학생 조치사항 관리대장, 조건부 기재유보 관리대장을 바로 확인·인쇄·CSV 저장할 수 있습니다.</p></div></div>
+        <div class="pageHead"><div><h1>📚 대장 관리</h1><p>충청북도교육청 『2026. 학교폭력 사안처리 A to Z』 표제에 맞춘 대장 화면입니다. 신고 접수 대장, 전담조사관 자료 관리 대장, 가해관련학생 조치사항 관리 대장, 조건부 기재유보 관리대장을 바로 확인·인쇄·CSV 저장할 수 있습니다.</p></div></div>
         <div class="tabs noPrint" id="ledgerTabs"></div>
 
         <div class="tabPane active" id="ledger-receipt-pane">
           <div class="card">
             <div class="btnRow noPrint" style="margin-bottom:12px"><button class="btn success" onclick="downloadReceiptCSV()">[양식1-1] CSV</button><button class="btn outline" onclick="printReceiptLedger()">인쇄</button></div>
-            <div class="tableWrap"><table><thead><tr><th>사안번호</th><th>신고접수 일시</th><th>사고자(연락처) 또는 신고기관</th><th>신고내용</th><th>접수 사실 통보<br>피해관련 학생/보호자</th><th>접수 사실 통보<br>가해관련 학생/보호자</th><th>가해자와 피해학생 분리</th><th>작성자(책임교사)</th></tr></thead><tbody id="receiptLedgerBody"></tbody></table></div>
+            <div class="tableWrap"><table><thead><tr><th>사안번호</th><th>신고접수 일시</th><th>사고자(연락처) 또는 신고기관</th><th>신고내용</th><th>접수 사실 통보<br>피해관련 학생/보호자</th><th>접수 사실 통보<br>가해관련 학생/보호자</th><th>가해관련 학생과 피해관련 학생 분리</th><th>작성자(책임교사)</th></tr></thead><tbody id="receiptLedgerBody"></tbody></table></div>
           </div>
         </div>
 
@@ -413,16 +427,16 @@
 
         <div class="tabPane" id="ledger-action-pane">
           <div class="card">
-            <div class="notice" style="margin-bottom:12px">[양식4-1]의 제목은 원문과 같이 "(20OO학년도 입학생)" 기준입니다. 실제 사용 시 학적 기준으로 확인하세요.</div>
-            <div class="btnRow noPrint" style="margin-bottom:12px"><button class="btn success" onclick="downloadActionMgmtCSV()">[양식4-1] CSV</button><button class="btn outline" onclick="printActionMgmtLedger()">인쇄</button></div>
+            <div class="notice" style="margin-bottom:12px">[서식27]의 제목은 원문과 같이 "(20OO학년도 입학생)" 기준입니다. 실제 사용 시 학적 기준으로 확인하세요.</div>
+            <div class="btnRow noPrint" style="margin-bottom:12px"><button class="btn success" onclick="downloadActionMgmtCSV()">[서식27] CSV</button><button class="btn outline" onclick="printActionMgmtLedger()">인쇄</button></div>
             <div class="tableWrap"><table><thead><tr><th>학년</th><th>반</th><th>번호</th><th>성명</th><th>조치일자</th><th>졸업예정일(월)</th><th>학교폭력 조치사항(기재유보 조치 포함)</th><th>전담기구 심의 사항(제4호, 제5호, 제6호, 제7호)</th><th>삭제 시기(월)</th></tr></thead><tbody id="actionMgmtLedgerBody"></tbody></table></div>
           </div>
         </div>
 
         <div class="tabPane" id="ledger-defer-pane">
           <div class="card">
-            <div class="notice" style="margin-bottom:12px">[양식4-2]는 제1호·제2호·제3호 조건부 기재유보 관리용입니다. 원문 주석처럼 조치일자는 교육장 내부결재일 기준으로 확인해야 합니다.</div>
-            <div class="btnRow noPrint" style="margin-bottom:12px"><button class="btn success" onclick="downloadDeferCSV()">[양식4-2] CSV</button><button class="btn outline" onclick="printDeferLedger()">인쇄</button></div>
+            <div class="notice" style="margin-bottom:12px">[서식28]는 제1호·제2호·제3호 조건부 기재유보 관리용입니다. 원문 주석처럼 조치일자는 교육장 내부결재일 기준으로 확인해야 합니다.</div>
+            <div class="btnRow noPrint" style="margin-bottom:12px"><button class="btn success" onclick="downloadDeferCSV()">[서식28] CSV</button><button class="btn outline" onclick="printDeferLedger()">인쇄</button></div>
             <div class="tableWrap"><table><thead><tr><th>학년</th><th>반</th><th>번호</th><th>성명</th><th>조치일자(이행기간)</th><th>조치사항</th><th>이행 완료일</th><th>비고</th></tr></thead><tbody id="deferLedgerBody"></tbody></table></div>
           </div>
         </div>
@@ -475,7 +489,7 @@
       </section>
     </main>
   </div>
-  <footer>© 2026@강창원. All rights reserved. | 2026 학교폭력 사안처리 가이드북 기준 흐름과 서식 번호를 반영한 보조 프로그램</footer>
+  <footer>© 2026@강창원. All rights reserved. | 충청북도교육청 『2026. 학교폭력 사안처리 A to Z』 용어·체크리스트·서식 번호를 반영한 보조 프로그램</footer>
 </div>
 
 <div class="modalBg" id="modalBg">
@@ -488,37 +502,41 @@
 
 <script>
 const STORAGE_PREFIX = 'sv_assist_v2_';
-const REPORT_TYPES = ['직접신고(피해학생)','보호자 신고','교사 인지','목격자 신고','117 신고','온라인 신고','기타'];
+const REPORT_TYPES = ['직접신고(피해관련학생)','보호자 신고','교사 인지','목격자 신고','117 신고','온라인 신고','기타'];
 const VIOLENCE_TYPES = ['신체폭력','언어폭력','금품갈취','강요','따돌림','성폭력','사이버폭력','복합(2개 이상)','기타'];
 const STATUS_LIST = ['접수중','조사중','분리조치','심의중','조치완료','종결'];
-const SEPARATIONS = ['','피해학생 보호조치','피신고학생 긴급분리','쌍방분리','분리 불필요'];
+const IMMEDIATE_SEPARATIONS = ['','즉시분리 시행','즉시분리 미시행'];
+const IMMEDIATE_NOT_REASONS = ['피해관련학생이 분리 조치에 반대 의사를 표명한 경우','학교가 교육활동 중이 아닌 경우','학교장이 가해관련학생 긴급 선도조치를 시행하여 이미 분리된 경우','관련 학생의 소속교가 다른 경우','관련 학생이 학교장 허가 교외체험학습으로 등교하지 않는 경우','학교장 자체해결 가능 요건에 모두 해당하는 경우'];
+const VICTIM_DEMAND_OPTIONS = ['사과','처벌','재발방지','학폭심의','기타'];
+const PERP_ATTITUDE_OPTIONS = ['사과의지','반성','재발방지약속','억울함','맞폭신고','기타'];
+
 const FORM_TYPES = [
-  ['form11','[양식1-1] 학교폭력 신고 접수 대장'],
-  ['form12','[양식1-2] 가해자와 피해학생 분리 의사 확인서'],
-  ['form13','[양식1-3] 학교폭력사안 접수 보고서'],
-  ['form21','[양식2-1] 학생 작성 확인서'],
-  ['form22','[양식2-2] 보호자 확인서'],
-  ['form23','[양식2-3] (피해·가해학생) 긴급조치 보고서'],
-  ['form24','[양식2-4] 학교폭력 사안조사 보고서'],
-  ['form25','[양식2-5] 피해·가해학생 보호자 개인정보'],
-  ['form26','[양식2-6] 학교폭력대책심의위원회 개최 요구 공문'],
-  ['form27','[양식2-7] 학교폭력 전담 조사관 자료 관리 대장'],
-  ['form31','[양식3-1] 학교폭력 전담기구 심의결과 보고서'],
-  ['form32','[양식3-2] 학교장 자체해결 동의서'],
-  ['form33','[양식3-3] 학교장 자체해결 결과 보고서'],
-  ['form34','[양식3-4] 학교폭력대책심의위원회 개최 요청서'],
-  ['form35','[양식3-5] 학교폭력대책심의위원회 개최 요구 취소 요청서'],
-  ['form36','[양식3-6] 학교폭력 아닌 사안의 종결 보고서'],
-  ['form37','[양식3-7] 학교폭력대책심의위원회 미개최 동의서'],
-  ['form41','[양식4-1] 학교폭력 가해학생 조치사항 관리대장'],
-  ['form42','[양식4-2] 조건부 기재유보 관리대장'],
-  ['form43','[양식4-3] 학교폭력 피해학생 관련 정보 제공 동의서'],
-  ['form44','[양식4-4] 학교폭력 피해학생 관련 정보 카드'],
-  ['form45','[양식4-5] 집행정지 결정에 따른 분리 요청서'],
-  ['form51','[양식5-1] 분쟁조정 신청서']
+  ['form11','[서식3] 학교폭력 신고 접수 대장'],
+  ['form12','[서식6] 가해관련 학생과 피해관련 학생 분리 의사 확인서'],
+  ['form13','[서식10] 학교폭력 사안접수 보고서'],
+  ['form21','[서식4] 학생 작성 확인서'],
+  ['form22','[서식5] 보호자 확인서'],
+  ['form23','[서식8] (피해·가해관련 학생) 긴급조치 보고서'],
+  ['form24','[서식12] 학교폭력 사안조사 보고서'],
+  ['form25','[보조서식] 피해·가해관련 학생 보호자 개인정보 정리표'],
+  ['form26','[공문14] 학교폭력대책심의위원회 개최 요청 공문'],
+  ['form27','[서식13] 학교폭력 전담조사관 자료 관리 대장'],
+  ['form31','[서식18] 학교폭력 전담기구 심의결과 보고서 [자체해결]'],
+  ['form32','[서식20] 학교장 자체해결 동의서'],
+  ['form33','[서식22] 학교장 (자체해결/종결) 결과 보고서'],
+  ['form34','[서식23] 학교폭력대책심의위원회 개최 요청서'],
+  ['form35','[서식26] 학교폭력대책심의위원회 개최 요구 취소 요청서(보호자)'],
+  ['form36','[서식19] 학교폭력 전담기구 심의결과 보고서 [종결]'],
+  ['form37','[서식21] 학교장 종결 처리 동의서'],
+  ['form41','[서식27] 학교폭력 가해학생 조치사항 관리 대장'],
+  ['form42','[서식28] 학교폭력 가해학생 조치(제1호·제2호·제3호) 조건부 기재유보 관리대장'],
+  ['form43','[서식41] 학교폭력 학교폭력 피해학생 관련 정보 제공 동의서'],
+  ['form44','[서식42] 학교폭력 학교폭력 피해학생 관련 정보 카드'],
+  ['form45','[서식43] 집행정지 결정에 따른 분리 요청서'],
+  ['form51','[참고서식] 분쟁조정 신청서']
 ];
 const ENTRY_TABS = [
-  ['pane-basic','① 기본 정보'],['pane-victim','② 피해학생'],['pane-perp','③ 피신고학생'],['pane-incident','④ 사안 개요'],['pane-measures','⑤ 초기 조치'],['pane-investigator','⑥ 조사/조치']
+  ['pane-basic','① 기본 정보'],['pane-victim','② 피해관련학생'],['pane-perp','③ 가해관련학생'],['pane-incident','④ 사안 개요'],['pane-measures','⑤ 초기 조치'],['pane-investigator','⑥ 조사/조치']
 ];
 
 const DB = {
@@ -534,6 +552,7 @@ let appState = {
   draft: DB.load('draft', null),
   victims: [],
   perps: [],
+  emergencyMeasures: [],
   editingId: null,
   privacy: false,
   lastActivity: Date.now(),
@@ -583,17 +602,19 @@ function setupSelects(){
   $('status').innerHTML = STATUS_LIST.map(v=>`<option>${v}</option>`).join('');
   $('searchStatus').innerHTML = '<option value="">전체</option>'+STATUS_LIST.map(v=>`<option>${v}</option>`).join('');
   $('searchType').innerHTML = '<option value="">전체</option>'+VIOLENCE_TYPES.map(v=>`<option>${v}</option>`).join('');
-  $('separation').innerHTML = SEPARATIONS.map(v=>`<option value="${escapeHtml(v)}">${v||'미입력'}</option>`).join('');
+  $('separation').innerHTML = IMMEDIATE_SEPARATIONS.map(v=>`<option value="${escapeHtml(v)}">${v||'미입력'}</option>`).join('');
+  $('sepPeriod').innerHTML = '<option value=>-- 선택 --</option>' + ['1일','2일','3일','4일','5일','6일','7일'].map(v=>`<option>${v}</option>`).join('');
+  $('sepReason').innerHTML = '<option value=>-- 선택 --</option>' + IMMEDIATE_NOT_REASONS.map(v=>`<option>${v}</option>`).join('');
   $('formType').innerHTML = '<option value="">-- 서식 선택 --</option>'+FORM_TYPES.map(([k,v])=>`<option value="${k}">${v}</option>`).join('');
 }
 
 function setupTabs(){
   $('entryTabs').innerHTML = ENTRY_TABS.map(([id,label],i)=>`<button class="tab ${i===0?'active':''}" onclick="openEntryTab('${id}',this)">${label}</button>`).join('');
   $('ledgerTabs').innerHTML = `
-    <button class="tab active" onclick="openLedgerTab('ledger-receipt-pane',this)">[양식1-1] 신고 접수 대장</button>
-    <button class="tab" onclick="openLedgerTab('ledger-investigator-pane',this)">[양식2-7] 조사관 자료 관리 대장</button>
-    <button class="tab" onclick="openLedgerTab('ledger-action-pane',this)">[양식4-1] 조치사항 관리대장</button>
-    <button class="tab" onclick="openLedgerTab('ledger-defer-pane',this)">[양식4-2] 조건부 기재유보 대장</button>`;
+    <button class="tab active" onclick="openLedgerTab('ledger-receipt-pane',this)">[서식3] 신고 접수 대장</button>
+    <button class="tab" onclick="openLedgerTab('ledger-investigator-pane',this)">[서식13] 전담조사관 자료 관리 대장</button>
+    <button class="tab" onclick="openLedgerTab('ledger-action-pane',this)">[서식27] 조치사항 관리 대장</button>
+    <button class="tab" onclick="openLedgerTab('ledger-defer-pane',this)">[서식28] 조건부 기재유보 대장</button>`;
 }
 function openEntryTab(id, el){document.querySelectorAll('#page-newcase .tabPane').forEach(x=>x.classList.remove('active')); $(id).classList.add('active'); document.querySelectorAll('#entryTabs .tab').forEach(x=>x.classList.remove('active')); el.classList.add('active'); saveDraftSilently();}
 function openLedgerTab(id, el){document.querySelectorAll('#page-ledgers .tabPane').forEach(x=>x.classList.remove('active')); $(id).classList.add('active'); document.querySelectorAll('#ledgerTabs .tab').forEach(x=>x.classList.remove('active')); el.classList.add('active');}
@@ -644,7 +665,7 @@ function removePerson(type, idx){
 function renderPersonList(type){
   const target = type==='victim'?appState.victims:appState.perps;
   const host = type==='victim'?$('victimList'):$('perpList');
-  const title = type==='victim'?'피해학생':'피신고학생';
+  const title = type==='victim'?'피해관련학생':'가해관련학생';
   host.innerHTML = target.map((p,idx)=>`
     <div class="personCard">
       <div class="personTitle">${title} ${idx+1}</div>
@@ -689,13 +710,18 @@ function getFormData(){
     damage: $('damage').value.trim(),
     evidence: $('evidence').value.trim(),
     separation: $('separation').value,
-    sepPeriod: $('sepPeriod').value.trim(),
+    sepPeriod: $('sepPeriod').value,
+    separationPlace: $('separationPlace').value.trim(),
+    sepReason: $('sepReason').value,
     officeReport: $('officeReport').value,
     officeDate: $('officeDate').value,
     police: $('police').value,
+    mandatoryNo2: $('mandatoryNo2').value,
+    relationRecoveryUsed: $('relationRecoveryUsed') ? $('relationRecoveryUsed').checked : false,
     committeeDate: $('committeeDate').value,
-    selfResolve: $('selfResolve').value,
-    parentAgree: $('parentAgree').value,
+    selfResolve: collectCheckboxGroup('victimDemandGroup', 'victimDemandOther'),
+    parentAgree: collectCheckboxGroup('perpAttitudeGroup', 'perpAttitudeOther'),
+    emergencyMeasures: JSON.parse(JSON.stringify(appState.emergencyMeasures)),
     initialActions: $('initialActions').value.trim(),
     victimNotify: $('victimNotify').value.trim(),
     perpNotify: $('perpNotify').value.trim(),
@@ -737,14 +763,18 @@ function validateCase(){
   if(!data.reportType) return fail('reportType','신고 유형을 선택하세요.');
   if(!data.violenceType) return fail('violenceType','폭력 유형을 선택하세요.');
   if(!data.summary) return fail('summary','사안 개요를 입력하세요.');
-  if(!data.victims.some(v=>String(v.name).trim())){ toast('피해학생 성명을 1명 이상 입력하세요.'); openEntryTab('pane-victim', document.querySelectorAll('#entryTabs .tab')[1]); return false; }
-  if(!data.perps.some(v=>String(v.name).trim())){ toast('피신고학생 성명을 1명 이상 입력하세요.'); openEntryTab('pane-perp', document.querySelectorAll('#entryTabs .tab')[2]); return false; }
+  if(!data.victims.some(v=>String(v.name).trim())){ toast('피해관련학생 성명을 1명 이상 입력하세요.'); openEntryTab('pane-victim', document.querySelectorAll('#entryTabs .tab')[1]); return false; }
+  if(!data.perps.some(v=>String(v.name).trim())){ toast('가해관련학생 성명을 1명 이상 입력하세요.'); openEntryTab('pane-perp', document.querySelectorAll('#entryTabs .tab')[2]); return false; }
   if(!data.officeReport){ $('officeReport').classList.add('error'); toast('교육(지원)청 보고 여부를 입력하세요.'); return false; }
   if(data.officeReport==='보고완료' && !data.officeDate) return fail('officeDate','교육(지원)청 보고완료라면 보고일을 입력하세요.');
+  if(data.separation==='즉시분리 시행' && !data.sepPeriod){ $('sepPeriod').classList.add('error'); toast('즉시분리 시행 시 분리기간을 선택하세요.'); return false; }
+  if(data.separation==='즉시분리 시행' && !data.separationPlace){ $('separationPlace').classList.add('error'); toast('즉시분리 시행 시 즉시분리 장소를 입력하세요.'); return false; }
+  if(data.separation==='즉시분리 미시행' && !data.sepReason){ $('sepReason').classList.add('error'); toast('즉시분리 미시행 시 미시행 사유를 선택하세요.'); return false; }
+  if(!data.mandatoryNo2){ $('mandatoryNo2').classList.add('error'); toast('가해관련학생 긴급선도조치 2호 시행 여부를 입력하세요.'); return false; }
+  if(data.mandatoryNo2!=='시행'){ $('mandatoryNo2').classList.add('error'); toast('충북 A to Z 기준에 따라 학교장 인지 시 가해관련학생 2호 조치를 지체 없이 시행해야 합니다.'); return false; }
   if(data.useInvestigator && !data.investigationDate){ $('investigationDate').classList.add('error'); toast('조사관 지정 시 조사 예정일을 입력하세요.'); return false; }
   if(isSexCrimeCase(data) && data.police==='미신고'){ $('police').classList.add('error'); toast('성범죄 관련 사안은 가이드북상 즉시 수사기관 신고가 필요합니다. 경찰 신고 상태를 확인하세요.'); return false; }
-  if(String(data.selfResolve||'').includes('자체해결') && data.parentAgree!=='동의'){ $('parentAgree').classList.add('error'); toast('학교장 자체해결 진행 시 피해학생 보호자 동의 여부를 확인하세요.'); return false; }
-  if((data.status==='심의중' || data.status==='조치완료' || data.status==='종결') && !data.committeeDate){ $('committeeDate').classList.add('error'); toast('심의 단계 이상이면 전담기구/심의 일정 또는 결정일을 입력하세요.'); return false; }
+  if((data.status==='심의중' || data.status==='조치완료' || data.status==='종결') && !data.committeeDate){ $('committeeDate').classList.add('error'); toast('심의 단계 이상이면 전담기구 개최일을 선택하세요.'); return false; }
   if((data.actionCode || data.actionContent) && !data.actionDate){ $('actionDate').classList.add('error'); toast('조치내용을 입력했다면 조치 결정일도 입력하세요.'); return false; }
   if(data.status==='종결' && !data.closedDate){ $('closedDate').classList.add('error'); toast('종결 단계에서는 최종 종결일을 입력하세요.'); return false; }
   return true;
@@ -784,12 +814,19 @@ function applyFormData(data={}, blankLists=false){
   $('evidence').value = data.evidence || '';
   $('separation').value = data.separation || '';
   $('sepPeriod').value = data.sepPeriod || '';
+  $('separationPlace').value = data.separationPlace || '';
+  $('sepReason').value = data.sepReason || '';
   $('officeReport').value = data.officeReport || '';
   $('officeDate').value = data.officeDate || '';
   $('police').value = data.police || '미신고';
-  $('committeeDate').value = data.committeeDate || '';
-  $('selfResolve').value = data.selfResolve || '';
-  $('parentAgree').value = data.parentAgree || '';
+  $('mandatoryNo2').value = data.mandatoryNo2 || '';
+  $('relationRecoveryUsed').checked = !!data.relationRecoveryUsed;
+  updateCommitteeDateOptions(data.recvAt || $('recvAt').value, data.committeeDate || '');
+  $('committeeDate').value = data.committeeDate || $('committeeDate').value || '';
+  appState.emergencyMeasures = (data.emergencyMeasures && data.emergencyMeasures.length ? data.emergencyMeasures : []).map(v=>({...defaultEmergencyMeasure(),...v}));
+  renderEmergencyMeasures();
+  setCheckboxGroup('victimDemandGroup', data.selfResolve || [], 'victimDemandOther');
+  setCheckboxGroup('perpAttitudeGroup', data.parentAgree || [], 'perpAttitudeOther');
   $('initialActions').value = data.initialActions || '';
   $('victimNotify').value = data.victimNotify || '';
   $('perpNotify').value = data.perpNotify || '';
@@ -815,7 +852,7 @@ function applyFormData(data={}, blankLists=false){
   $('memo').value = data.memo || '';
   appState.victims = (data.victims && data.victims.length ? data.victims : [defaultPerson()]).map(v=>({...defaultPerson(),...v}));
   appState.perps = (data.perps && data.perps.length ? data.perps : [defaultPerson()]).map(v=>({...defaultPerson(),...v}));
-  renderPersonList('victim'); renderPersonList('perp'); toggleInvestigatorFields(); updateStepTrack();
+  renderPersonList('victim'); renderPersonList('perp'); toggleInvestigatorFields(); toggleSeparationFields(); updateStepTrack();
   document.querySelectorAll('#entryTabs .tab')[0].click();
 }
 function resetForm(){
@@ -855,12 +892,12 @@ function renderDashboard(){
   const alerts=[];
   appState.cases.forEach(c=>{
     if(!c.summary) alerts.push(`[${c.caseNo}] 사안 개요 미입력`);
-    if(c.urgency==='긴급' && !c.separation) alerts.push(`[${c.caseNo}] 긴급 사안인데 분리조치 미입력`);
+    if(c.urgency==='긴급' && !c.separation) alerts.push(`[${c.caseNo}] 긴급 사안인데 즉시분리 여부 미입력`);
+    if(c.mandatoryNo2!=='시행') alerts.push(`[${c.caseNo}] 가해관련학생 2호 조치 시행 여부 재확인 필요`);
     if(isReportOverdue(c)) alerts.push(`[${c.caseNo}] 교육(지원)청 48시간 보고 기한 경과`);
     if((c.status==='조사중'||c.useInvestigator) && !c.investigationDate) alerts.push(`[${c.caseNo}] 조사 예정일 미입력`);
-    if((c.status==='심의중'||c.status==='조치완료'||c.status==='종결') && !c.committeeDate) alerts.push(`[${c.caseNo}] 전담기구/심의 일정 미입력`);
+    if((c.status==='심의중'||c.status==='조치완료'||c.status==='종결') && !c.committeeDate) alerts.push(`[${c.caseNo}] 전담기구 개최일 미입력`);
     if(isSexCrimeCase(c) && c.police==='미신고') alerts.push(`[${c.caseNo}] 성범죄 관련 사안인데 경찰 신고 상태 미확인`);
-    if(String(c.selfResolve||'').includes('자체해결') && c.parentAgree!=='동의') alerts.push(`[${c.caseNo}] 학교장 자체해결 검토 중 보호자 동의 재확인 필요`);
     if(c.status==='조치완료' && !c.actionDate) alerts.push(`[${c.caseNo}] 조치 결정일 미입력`);
     if(c.status==='종결' && !c.closedDate) alerts.push(`[${c.caseNo}] 종결일 미입력`);
   });
@@ -904,12 +941,14 @@ function openCase(id){
         <div><b>교육(지원)청 보고</b><div class="subtle">${escapeHtml(c.officeReport||'-')} / ${escapeHtml(c.officeDate||'-')}</div></div>
       </div>
       <hr style="border:none;border-top:1px solid var(--line);margin:14px 0">
-      <div><b>피해학생</b><div class="subtle">${escapeHtml(c.victims.map(v=>personText(v)).join(' / ')||'-')}</div></div>
-      <div style="margin-top:10px"><b>피신고학생</b><div class="subtle">${escapeHtml(c.perps.map(v=>personText(v)).join(' / ')||'-')}</div></div>
+      <div><b>피해관련학생</b><div class="subtle">${escapeHtml(c.victims.map(v=>personText(v)).join(' / ')||'-')}</div></div>
+      <div style="margin-top:10px"><b>가해관련학생</b><div class="subtle">${escapeHtml(c.perps.map(v=>personText(v)).join(' / ')||'-')}</div></div>
       <div style="margin-top:10px"><b>사안 개요</b><div class="subtle" style="white-space:pre-wrap">${escapeHtml(c.summary||'-')}</div></div>
-      <div style="margin-top:10px"><b>초기 조치</b><div class="subtle">분리: ${escapeHtml(c.separation||'-')} / 경찰: ${escapeHtml(c.police||'-')} / 자체해결 검토: ${escapeHtml(c.selfResolve||'-')}</div></div>
+      <div style="margin-top:10px"><b>초기 조치</b><div class="subtle">즉시분리: ${escapeHtml(formatSeparationDisplay(c))} / 가해관련학생 2호: ${escapeHtml(c.mandatoryNo2||'-')} / 경찰: ${escapeHtml(c.police||'-')} / 전담기구 개최일: ${escapeHtml(c.committeeDate||'-')}</div></div>
+      <div style="margin-top:10px"><b>피해관련학생 측 요구</b><div class="subtle">${escapeHtml(formatMulti(c.selfResolve)||'-')}</div></div>
+      <div style="margin-top:10px"><b>가해관련학생 측 태도</b><div class="subtle">${escapeHtml(formatMulti(c.parentAgree)||'-')}</div></div>
+      <div style="margin-top:10px"><b>긴급조치</b><div class="subtle">${escapeHtml(formatEmergencyMeasures(c.emergencyMeasures)||'-')}</div></div>
       <div style="margin-top:10px"><b>조치</b><div class="subtle">${escapeHtml(c.actionCode||'-')} ${escapeHtml(c.actionContent||'')}</div></div>
-      <div style="margin-top:10px"><b>자체해결 4요건 메모</b><div class="subtle">${escapeHtml(selfResolveChecklistText())}</div></div>
     </div>`;
   $('modalFoot').innerHTML = `
     <button class="btn outline" onclick="closeModal()">닫기</button>
@@ -928,6 +967,101 @@ function openCaseFormFromModal(id){ closeModal(); showPage('forms'); populateFor
 
 function personText(p){ return [p.name,[p.grade&&p.classNum?`${p.grade}학년 ${p.classNum}반`:'' , p.studentNum?`${p.studentNum}번`:'' ].filter(Boolean).join(' '), p.phone?`연락처 ${p.phone}`:''].filter(Boolean).join(' / ')}
 
+function defaultEmergencyMeasure(){ return {kind:'', name:'', victimAction:'', offenderBasis:'', offenderAction:'', offenderReviewResult:''} }
+function renderCheckboxGroup(hostId, options, otherId){
+  $(hostId).innerHTML = options.map(opt=>`<label class="check" style="min-width:110px"><input type="checkbox" value="${escapeHtml(opt)}" onchange="toggleOtherInput('${hostId}','${otherId}')"> ${opt}</label>`).join('');
+}
+function toggleOtherInput(hostId, otherId){
+  const other = Array.from(document.querySelectorAll(`#${hostId} input[type="checkbox"]`)).find(x=>x.value==='기타');
+  if(!other || !$(otherId)) return;
+  $(otherId).classList.toggle('hidden', !other.checked);
+}
+function collectCheckboxGroup(hostId, otherId){
+  const vals = Array.from(document.querySelectorAll(`#${hostId} input[type="checkbox"]:checked`)).map(x=>x.value);
+  if(vals.includes('기타') && $(otherId) && $(otherId).value.trim()){
+    return vals.filter(v=>v!=='기타').concat([`기타: ${$(otherId).value.trim()}`]);
+  }
+  return vals;
+}
+function setCheckboxGroup(hostId, values, otherId){
+  const vals = Array.isArray(values) ? values : (values ? String(values).split(',').map(v=>v.trim()).filter(Boolean) : []);
+  document.querySelectorAll(`#${hostId} input[type="checkbox"]`).forEach(ch=>{
+    if(ch.value==='기타') ch.checked = vals.some(v=>v.startsWith('기타'));
+    else ch.checked = vals.includes(ch.value);
+  });
+  const otherVal = vals.find(v=>v.startsWith('기타:')) || vals.find(v=>v.startsWith('기타')) || '';
+  if($(otherId)) $(otherId).value = otherVal.replace(/^기타:?\s*/, '');
+  toggleOtherInput(hostId, otherId);
+}
+function addEmergencyMeasure(value){ appState.emergencyMeasures.push(value || defaultEmergencyMeasure()); renderEmergencyMeasures(); saveDraftSilently(); }
+function removeEmergencyMeasure(idx){ appState.emergencyMeasures.splice(idx,1); renderEmergencyMeasures(); saveDraftSilently(); }
+function updateEmergencyMeasure(idx, field, value){ appState.emergencyMeasures[idx][field]=value; renderEmergencyMeasures(); saveDraftSilently(); }
+function renderEmergencyMeasures(){
+  const host = $('emergencyMeasuresList');
+  if(!host) return;
+  host.innerHTML = appState.emergencyMeasures.length ? appState.emergencyMeasures.map((m,idx)=>`<div class="personCard">
+    <div class="personTitle">긴급조치 ${idx+1}</div>
+    <button type="button" class="removeMini" onclick="removeEmergencyMeasure(${idx})">삭제</button>
+    <div class="row">
+      <div class="field"><label>긴급조치 여부</label><select onchange="updateEmergencyMeasure(${idx},'kind',this.value)"><option value="">-- 선택 --</option><option ${m.kind==='피해(관련)학생 보호조치'?'selected':''}>피해(관련)학생 보호조치</option><option ${m.kind==='가해(관련)학생 선도조치'?'selected':''}>가해(관련)학생 선도조치</option></select></div>
+      <div class="field"><label>이름</label><input value="${escapeHtml(m.name||'')}" ${m.kind==='피해(관련)학생 보호조치'?'':'disabled'} oninput="updateEmergencyMeasure(${idx},'name',this.value)"></div>
+      <div class="field"><label>피해(관련)학생 조치</label><select ${m.kind==='피해(관련)학생 보호조치'?'':'disabled'} onchange="updateEmergencyMeasure(${idx},'victimAction',this.value)"><option value="">-- 선택 --</option>${['1호','2호','3호','6호'].map(v=>`<option ${m.victimAction===v?'selected':''}>${v}</option>`).join('')}</select></div>
+    </div>
+    <div class="row">
+      <div class="field"><label>가해(관련)학생 조치 근거</label><select ${m.kind==='가해(관련)학생 선도조치'?'':'disabled'} onchange="updateEmergencyMeasure(${idx},'offenderBasis',this.value)"><option value="">-- 선택 --</option><option ${m.offenderBasis==='학교장 판단'?'selected':''}>학교장 판단</option><option ${m.offenderBasis==='피해관련학생측 요청'?'selected':''}>피해관련학생측 요청</option></select></div>
+      <div class="field"><label>가해(관련)학생 조치</label><select ${(m.kind==='가해(관련)학생 선도조치' && m.offenderBasis)?'':'disabled'} onchange="updateEmergencyMeasure(${idx},'offenderAction',this.value)"><option value="">-- 선택 --</option>${(m.offenderBasis==='피해관련학생측 요청'?['6호','7호']:(m.offenderBasis==='학교장 판단'?['1호','3호','5호','6호','7호']:[])).map(v=>`<option ${m.offenderAction===v?'selected':''}>${v}</option>`).join('')}</select>${(['6호','7호'].includes(m.offenderAction) && m.offenderBasis==='피해관련학생측 요청')?'<div class="help" style="color:#b45309;font-weight:700">전담기구 심의 필수</div>':''}</div>
+      <div class="field"><label>전담기구 심의 결과</label><select ${(['6호','7호'].includes(m.offenderAction) && m.offenderBasis==='피해관련학생측 요청')?'':'disabled'} onchange="updateEmergencyMeasure(${idx},'offenderReviewResult',this.value)"><option value="">-- 선택 --</option>${['전담기구 심의 결과 긴급조치 미시행','전담기구 심의 결과 6호','전담기구 심의 결과 7호'].map(v=>`<option ${m.offenderReviewResult===v?'selected':''}>${v}</option>`).join('')}</select></div>
+    </div>
+  </div>`).join('') : '<div class="empty">등록된 긴급조치가 없습니다.</div>';
+}
+
+function updateCommitteeDateOptions(recvAt, selected=''){
+  const el = $('committeeDate');
+  if(!el) return;
+  const base = recvAt ? new Date(recvAt) : null;
+  let options = '<option value="">-- 선택 --</option>';
+  if(base && !Number.isNaN(base.getTime())){
+    const d14 = new Date(base.getTime()); d14.setDate(d14.getDate()+14);
+    const d21 = new Date(base.getTime()); d21.setDate(d21.getDate()+21);
+    const d28 = new Date(base.getTime()); d28.setDate(d28.getDate()+28);
+    const fmt = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    const v14 = fmt(d14), v21 = fmt(d21), v28 = fmt(d28);
+    options += `<option value="${v14}">${v14}</option>`;
+    options += `<option value="${v21}">${v21} (개최 연기 내부결재)</option>`;
+    if($('relationRecoveryUsed')?.checked){
+      options += `<option value="${v28}">${v28} (관계회복 숙려제도 운영)</option>`;
+    }
+  }
+  el.innerHTML = options;
+  if(selected) el.value = selected;
+}
+
+function toggleSeparationFields(){
+  const mode = $('separation').value;
+  const isDo = mode==='즉시분리 시행';
+  const isNot = mode==='즉시분리 미시행';
+  $('sepPeriod').disabled = !isDo;
+  $('separationPlace').disabled = !isDo;
+  $('sepReason').disabled = !isNot;
+  if(!isDo){ $('sepPeriod').value=''; $('separationPlace').value=''; }
+  if(!isNot){ $('sepReason').value=''; }
+  saveDraftSilently();
+}
+function formatMulti(v){ return Array.isArray(v) ? v.join(', ') : (v||''); }
+function formatSeparationDisplay(c){
+  if(!c) return '';
+  if(c.separation==='즉시분리 시행') return [c.separation, c.sepPeriod, c.separationPlace?`장소: ${c.separationPlace}`:''].filter(Boolean).join(' / ');
+  if(c.separation==='즉시분리 미시행') return [c.separation, c.sepReason].filter(Boolean).join(' / ');
+  return c.separation || '';
+}
+function formatEmergencyMeasures(items){
+  if(!Array.isArray(items) || !items.length) return '';
+  return items.map(m=>{
+    if(m.kind==='피해(관련)학생 보호조치') return [m.kind, m.name, m.victimAction].filter(Boolean).join(' ');
+    return [m.kind, m.offenderBasis, m.offenderAction, m.offenderReviewResult].filter(Boolean).join(' / ');
+  }).join(' ; ');
+}
+
 
 function renderLedgers(){
   const schoolTeacher = appState.settings.teacher || '';
@@ -939,7 +1073,7 @@ function renderLedgers(){
       <td style="white-space:pre-wrap">${blankCell(c.summary)}</td>
       <td>${blankCell(c.victimNotify)}</td>
       <td>${blankCell(c.perpNotify)}</td>
-      <td>${blankCell(c.separation)}</td>
+      <td>${blankCell(formatSeparationDisplay(c))}</td>
       <td>${blankCell(c.teacher || schoolTeacher)}</td>
     </tr>`).join('') : `<tr><td colspan="8"><div class="empty">데이터가 없습니다.</div></td></tr>`;
 
@@ -1004,7 +1138,7 @@ function renderStats(){
   });
   const active = appState.cases.filter(c=>c.status!=='종결').length;
   const cyber = appState.cases.filter(c=>c.violenceType==='사이버폭력').length;
-  const selfReview = appState.cases.filter(c=>c.selfResolve).length;
+  const selfReview = appState.cases.filter(c=>Array.isArray(c.selfResolve)?c.selfResolve.length:c.selfResolve).length;
   $('statsBoxes').innerHTML = `
     <div class="stat"><div class="n">${total}</div><div class="l">총 접수</div></div>
     <div class="stat"><div class="n">${active}</div><div class="l">처리 중</div></div>
@@ -1082,14 +1216,13 @@ function relatedRows(c){
   return rows;
 }
 function selfResolveOpinion(c){
-  if(!c.selfResolve) return '';
-  return String(c.selfResolve).includes('자체해결') ? '충족 가능 또는 자체해결 검토' : '자체해결 요건 미충족 또는 심의 요청';
+  return formatMulti(c.selfResolve);
 }
 function separationExceptionText(c){
-  if(c.separation) return '';
-  if(String(c.selfResolve||'').includes('자체해결')) return '학교장 자체해결 가능 요건에 모두 해당';
+  if(c.separation==='즉시분리 미시행') return c.sepReason || '';
   return '';
 }
+
 function strikeIfNeeded(text, c){
   if(!text) return '';
   if(!c.completionDate) return `<span style="text-decoration:line-through">${escapeHtml(text)}</span>`;
@@ -1104,11 +1237,11 @@ function ledgerForm11Table(){
       <td style="white-space:pre-wrap">${blankCell(c.summary)}</td>
       <td>${blankCell(notifyText(c,'victim'))}</td>
       <td>${blankCell(notifyText(c,'perp'))}</td>
-      <td>${blankCell(c.separation)}</td>
+      <td>${blankCell(formatSeparationDisplay(c))}</td>
       <td>${blankCell(c.teacher || appState.settings.teacher)}</td>
     </tr>`).join('') || `<tr><td colspan="8" style="text-align:center">데이터 없음</td></tr>`;
   return `<table class="formTable">
-    <tr><th>사안번호</th><th>신고접수 일시</th><th>사고자(연락처) 또는 신고기관</th><th>신고내용</th><th>접수 사실 통보<br>피해관련 학생/보호자</th><th>접수 사실 통보<br>가해관련 학생/보호자</th><th>가해자와 피해학생 분리</th><th>작성자(책임교사)</th></tr>
+    <tr><th>사안번호</th><th>신고접수 일시</th><th>사고자(연락처) 또는 신고기관</th><th>신고내용</th><th>접수 사실 통보<br>피해관련 학생/보호자</th><th>접수 사실 통보<br>가해관련 학생/보호자</th><th>가해관련 학생과 피해관련 학생 분리</th><th>작성자(책임교사)</th></tr>
     ${rows}
   </table>`;
 }
@@ -1191,25 +1324,25 @@ function buildForm(c, type){
   const tail = `</div></div>`;
 
   const forms = {
-    form11: `${head('학교폭력 신고 접수 대장','[양식1-1]  학교폭력 신고 접수 대장')}<div class="meta">[참고] 사안번호는 모든 관련 서류에 동일하게 작성</div>${ledgerForm11Table()}<div class="meta" style="margin-top:8px">* (${escapeHtml(school)})학교</div>${tail}`,
+    form11: `${head('학교폭력 신고 접수 대장','[서식3]  학교폭력 신고 접수 대장')}<div class="meta">[참고] 사안번호는 모든 관련 서류에 동일하게 작성</div>${ledgerForm11Table()}<div class="meta" style="margin-top:8px">* (${escapeHtml(school)})학교</div>${tail}`,
 
-    form12: `${head('가해자와 피해학생 분리 의사 확인서','[양식1-2]  가해자와 피해학생 분리 의사 확인서')}
+    form12: `${head('가해관련 학생과 피해관련 학생 분리 의사 확인서','[서식6]  가해관련 학생과 피해관련 학생 분리 의사 확인서')}
       <div class="meta">${escapeHtml(caseRef(c, school))}</div>
       <div style="margin:10px 0 14px">아래 내용을 확인하여 해당 칸에 표시하여 주시기 바랍니다.</div>
-      <div style="margin-bottom:12px">「학교폭력예방법」 제16조 제1항에 따른 '가해자와 피해학생 분리'를<br><br>${String(c.separation||'').includes('불필요') ? '□ 희망합니다. &nbsp;&nbsp;&nbsp; ■ 희망하지 않습니다.' : '■ 희망합니다. &nbsp;&nbsp;&nbsp; □ 희망하지 않습니다.'}</div>
+      <div style="margin-bottom:12px">「학교폭력예방법」 제16조 제1항에 따른 '가해관련 학생과 피해관련 학생 분리'를<br><br>${c.separation==='즉시분리 미시행' ? '□ 희망합니다. &nbsp;&nbsp;&nbsp; ■ 희망하지 않습니다.' : '■ 희망합니다. &nbsp;&nbsp;&nbsp; □ 희망하지 않습니다.'}</div>
       <div style="margin:12px 0">학교장 귀중</div>
       <div style="margin:16px 0">2026년&nbsp;&nbsp;&nbsp;&nbsp;월&nbsp;&nbsp;&nbsp;&nbsp;일</div>
-      <div style="margin:8px 0 16px">피해학생: ${blankCell(victim.name)} <span class="signLine"></span></div>
-      <div style="font-size:12px;line-height:1.8;white-space:pre-wrap">1. 제도 도입 취지: 피해학생의 심리적 불안감 해소 및 2차 피해 방지, 고조된 학교폭력 갈등 상황 완화를 위해 동일 학교에서 발생한 학교폭력 발생 초기에 학교장이 학교폭력을 '인지'한 경우 가해자와 피해학생을 일시 분리합니다(법률 제16조 제1항).
-※ 사안조사 전 단계이므로, '가해자-피해학생'은 '가해 관련자-피해 관련 학생'의 의미입니다.
-2. '가해자와 피해학생 분리'는 1일~7일 범위 내에 실시하되, 제16조 제1항 또는 제17조 제5항 및 제6항에 따라 긴급조치가 시행되어 가해자와 피해학생이 분리되면 종료됩니다.
+      <div style="margin:8px 0 16px">피해관련 학생: ${blankCell(victim.name)} <span class="signLine"></span></div>
+      <div style="font-size:12px;line-height:1.8;white-space:pre-wrap">1. 제도 도입 취지: 피해관련학생의 심리적 불안감 해소 및 2차 피해 방지, 고조된 학교폭력 갈등 상황 완화를 위해 동일 학교에서 발생한 학교폭력 발생 초기에 학교장이 학교폭력을 '인지'한 경우 가해자와 피해관련학생을 일시 분리합니다(법률 제16조 제1항).
+※ 사안조사 전 단계이므로, '가해자-피해관련학생'은 '가해 관련자-피해 관련 학생'의 의미입니다.
+2. '가해관련 학생과 피해관련 학생 분리'는 1일~7일 범위 내에 실시하되, 제16조 제1항 또는 제17조 제5항 및 제6항에 따라 긴급조치가 시행되어 가해자와 피해관련학생이 분리되면 종료됩니다.
 3. 관련 학생 쌍방이 서로 피해를 주장하며 분리를 요청하는 경우 양측의 의사를 모두 반영하여 상호 분리를 하여야 합니다.
 4. 분리를 희망하는 경우라 하더라도, 법률 제13조의2 제1항 각 호에 모두 해당하는 경우 분리하지 않을 수 있습니다.
-5. 가해자와 피해학생의 분리 기간 중에도 제16조 제1항 또는 제17조 제5항 및 제6항에 따라 긴급조치를 시행할 수 있습니다.
+5. 가해자와 피해관련학생의 분리 기간 중에도 제16조 제1항 또는 제17조 제5항 및 제6항에 따라 긴급조치를 시행할 수 있습니다.
 6. 학교는 해당 기간 동안 관련 학생의 학습권 보장을 위해 학교 내 별도 공간 마련, 교육자료 제공, 원격 수업 등을 실시합니다.
 7. 학교 내 별도 공간 마련이 어려워 학교 외 장소를 이용한 경우 출석인정 결석으로 처리됩니다.</div>${tail}`,
 
-    form13: `${head('학교폭력사안 접수보고서','[양식1-3]  학교폭력사안 접수보고서')}
+    form13: `${head('학교폭력 사안접수 보고서','[서식10]  학교폭력 사안접수 보고서')}
       <div class="meta">[참고] 학교폭력 접수 사안을 학교장 및 교육(지원)청에 보고(48시간 이내 보고) / 긴급하거나 중대 사안(성폭력 사안 등)은 유선으로 별도 보고</div>
       <table class="formTable">
         <tr><th>학교명</th><td>${blankCell(school)}</td><th>교감 성명</th><td>${blankCell(vicePrincipal)}</td><th>휴대전화</th><td>${blankCell(viceMobile)}</td></tr>
@@ -1221,11 +1354,11 @@ function buildForm(c, type){
       </table>
       <table class="formTable">
         <tr><th>조사관 배정 요청</th><td>${c.useInvestigator ? '■ 조사관 배정 요청' : '□ 조사관 배정 요청'} &nbsp;&nbsp; ${c.useInvestigator ? '□ 학교 자체 조사' : '■ 학교 자체 조사'}</td></tr>
-        <tr><th>가해학생 제2호 조치 시행</th><td>${blankCell(c.initialActions || '학교폭력예방법 제17조제4항에 따른 가해학생 제2호 조치 시행 여부 확인')}</td></tr>
+        <tr><th>가해관련학생 제2호 조치 시행</th><td>${blankCell(c.mandatoryNo2 || '시행')}</td></tr>
       </table>
       <table class="formTable">
-        <tr><th rowspan="2">가해자와 피해학생 분리여부</th><th>분리 시행 여부</th><th>가해자와 피해학생 분리 예외 사유(√)</th></tr>
-        <tr><td>${c.separation ? '■ 시행' : '□ 시행'} &nbsp;&nbsp; ${c.separation ? '□ 미시행' : '■ 미시행'}<br>*분리기간: ${blankCell(c.sepPeriod)}</td><td style="white-space:pre-wrap">${blankCell(separationExceptionText(c))}</td></tr>
+        <tr><th rowspan="2">가해관련 학생과 피해관련 학생 분리여부</th><th>분리 시행 여부</th><th>가해관련 학생과 피해관련 학생 분리 예외 사유(√)</th></tr>
+        <tr><td>${c.separation==='즉시분리 시행' ? '■ 시행' : '□ 시행'} &nbsp;&nbsp; ${c.separation==='즉시분리 미시행' ? '■ 미시행' : '□ 미시행'}<br>${c.separation==='즉시분리 시행' ? `*분리기간: ${blankCell(c.sepPeriod)}${c.separationPlace ? `<br>*즉시분리 장소: ${blankCell(c.separationPlace)}` : ''}` : `*미시행 사유: ${blankCell(c.sepReason)}`}</td><td style="white-space:pre-wrap">${blankCell(separationExceptionText(c))}</td></tr>
       </table>
       <table class="formTable">
         <tr><th>사실확인 내용</th><td style="white-space:pre-wrap">${blankCell(c.summary)}</td></tr>
@@ -1242,7 +1375,7 @@ function buildForm(c, type){
       </table>
       <div class="meta" style="margin-top:8px">${escapeHtml(caseRef(c, school))}</div>${tail}`,
 
-    form21: `${head('학생 작성 확인서','[양식2-1]  학생 작성 확인서')}
+    form21: `${head('학생 작성 확인서','[서식4]  학생 작성 확인서')}
       <div class="meta">(학교) 최초 학생 작성 □ &nbsp;&nbsp; (전담조사관) 추가 학생 작성 □</div>
       <div class="meta">${escapeHtml(caseRef(c, school))}</div>
       <table class="formTable">
@@ -1253,7 +1386,7 @@ function buildForm(c, type){
         <tr><th>작성일</th><td colspan="3">${currentDate}</td></tr>
       </table>${tail}`,
 
-    form22: `${head('보호자 확인서','[양식2-2]  보호자 확인서')}
+    form22: `${head('보호자 확인서','[서식5]  보호자 확인서')}
       <div class="meta">${escapeHtml(caseRef(c, school))}</div>
       <table class="formTable">
         <tr><th>학생 성명</th><td>${blankCell(victim.name || perp.name)}</td><th>학년 / 반</th><td>${blankCell((victim.grade||perp.grade) ? `${victim.grade||perp.grade} / ${victim.classNum||perp.classNum}` : '')}</td></tr>
@@ -1266,20 +1399,20 @@ function buildForm(c, type){
         <tr><th>학교폭력 사안처리 절차 안내 여부</th><td colspan="3">학교폭력 사안처리 절차 안내를 받았습니다. (√ 표시) □</td></tr>
       </table>${tail}`,
 
-    form23: `${head('(피해·가해학생) 긴급조치 보고서','[양식2-3]  (피해·가해학생) 긴급조치 보고서')}
-      <div class="meta">[참고] 피해학생 긴급 보호조치는 법률 제16조제1항에 의거 즉시 심의위원회에 보고 / 가해학생 긴급 선도조치는 법률 제17조제5항 및 제6항에 의거 즉시 심의위원회에 보고 및 추인</div>
+    form23: `${head('(피해·가해관련 학생) 긴급조치 보고서','[서식8]  (피해·가해관련 학생) 긴급조치 보고서')}
+      <div class="meta">[참고] 피해관련학생 긴급 보호조치는 법률 제16조제1항에 의거 즉시 심의위원회에 보고 / 가해관련학생 긴급 선도조치는 법률 제17조제5항 및 제6항에 의거 즉시 심의위원회에 보고 및 추인</div>
       <div class="meta">${escapeHtml(caseRef(c, school))}</div>
       <table class="formTable">
         <tr><th>대상학생</th><td>${blankCell(joinRoleNames(c.victims) || joinRoleNames(c.perps))}</td><th>학년 / 반</th><td>${blankCell(gradeClassText(victim) || gradeClassText(perp))}</td></tr>
         <tr><th>사안 개요(조치원인)</th><td colspan="3" style="white-space:pre-wrap">${blankCell(c.summary)}</td></tr>
         <tr><th>조치 내용</th><td colspan="3">${blankCell(c.initialActions || c.separation)}</td></tr>
-        <tr><th>피해학생 조치 사항</th><td>${blankCell(c.separation)}</td><th>법적 근거</th><td>「학교폭력 예방 및 대책에 관한 법률」 제16조제1항</td></tr>
-        <tr><th>가해학생 조치 사항</th><td>${blankCell(c.actionCode)}</td><th>법적 근거</th><td>「학교폭력 예방 및 대책에 관한 법률」 제17조제5항 / 제17조제6항</td></tr>
+        <tr><th>피해관련학생 조치 사항</th><td>${blankCell(c.separation)}</td><th>법적 근거</th><td>「학교폭력 예방 및 대책에 관한 법률」 제16조제1항</td></tr>
+        <tr><th>가해관련학생 조치 사항</th><td>${blankCell(c.actionCode)}</td><th>법적 근거</th><td>「학교폭력 예방 및 대책에 관한 법률」 제17조제5항 / 제17조제6항</td></tr>
         <tr><th>조치일자</th><td>${blankCell(dotDate(c.actionDate || c.recvAt))}</td><th>관련 학생 및 보호자 통지</th><td>${blankCell(c.victimNotify || c.perpNotify)}</td></tr>
         <tr><th>긴급 조치의 필요성</th><td colspan="3">${blankCell(c.damage || c.summary)}</td></tr>
       </table>${tail}`,
 
-    form24: `${head('학교폭력 사안조사 보고서','[양식2-4]  학교폭력 사안조사 보고서')}
+    form24: `${head('학교폭력 사안조사 보고서','[서식12]  학교폭력 사안조사 보고서')}
       <div class="meta">(1차 조사□ / 보완조사□)</div>
       <div class="meta">${escapeHtml(caseRef(c, school))}</div>
       <table class="formTable">
@@ -1296,8 +1429,8 @@ function buildForm(c, type){
         <tr><th>사안 경위(세부내용 전체)</th><td style="white-space:pre-wrap">${blankCell([c.summary, c.damage, c.evidence].filter(Boolean).join('\n\n'))}</td></tr>
       </table>
       <table class="formTable">
-        <tr><th rowspan="2">가해자와 피해학생의 분리 여부</th><th>분리 시행 여부</th><th>가해자와 피해학생 분리 예외(√)</th></tr>
-        <tr><td>${c.separation ? '■ 시행' : '□ 시행'} &nbsp;&nbsp; ${c.separation ? '□ 미시행' : '■ 미시행'}<br>*분리기간: ${blankCell(c.sepPeriod)}</td><td style="white-space:pre-wrap">${blankCell(separationExceptionText(c))}</td></tr>
+        <tr><th rowspan="2">가해자와 피해관련학생의 분리 여부</th><th>분리 시행 여부</th><th>가해관련 학생과 피해관련 학생 분리 예외(√)</th></tr>
+        <tr><td>${c.separation==='즉시분리 시행' ? '■ 시행' : '□ 시행'} &nbsp;&nbsp; ${c.separation==='즉시분리 미시행' ? '■ 미시행' : '□ 미시행'}<br>${c.separation==='즉시분리 시행' ? `*분리기간: ${blankCell(c.sepPeriod)}${c.separationPlace ? `<br>*즉시분리 장소: ${blankCell(c.separationPlace)}` : ''}` : `*미시행 사유: ${blankCell(c.sepReason)}`}</td><td style="white-space:pre-wrap">${blankCell(separationExceptionText(c))}</td></tr>
       </table>
       <table class="formTable">
         <tr><th>자체해결 요건 충족 여부(조사관 조사시)</th><td>${blankCell(selfResolveOpinion(c))}</td></tr>
@@ -1311,7 +1444,7 @@ function buildForm(c, type){
         <tr><th>목격학생의 진술 등</th><td style="white-space:pre-wrap">${blankCell(c.evidence)}</td></tr>
       </table>${tail}`,
 
-    form25: `${head('피해·가해학생 보호자 개인정보','[양식2-5]  피해·가해학생 보호자 개인정보')}
+    form25: `${head('피해·가해관련 학생 보호자 개인정보 정리표','[보조서식]  피해·가해관련 학생 보호자 개인정보 정리표')}
       <div class="meta">${escapeHtml(caseRef(c, school))}</div>
       <table class="formTable">
         <tr><th>구분</th><th>학생</th><th>보호자명</th><th>관계</th><th>휴대폰번호</th><th>주소</th></tr>
@@ -1319,33 +1452,33 @@ function buildForm(c, type){
         ${(c.perps||[]).map(v=>`<tr><td>가해(관련)</td><td>${blankCell(v.name)}</td><td>${blankCell(v.guardian)}</td><td>${blankCell(v.relation)}</td><td>${blankCell(v.phone)}</td><td>${blankCell(v.address)}</td></tr>`).join('')}
       </table>${tail}`,
 
-    form26: `${head('학교폭력대책심의위원회 개최 요구 공문','[양식2-6]  학교폭력대책심의위원회 개최 요구 공문')}
+    form26: `${head('학교폭력대책심의위원회 개최 요청 공문','[공문14]  학교폭력대책심의위원회 개최 요청 공문')}
       <table class="formTable">
         <tr><th>수신</th><td>${blankCell(appState.settings.office)}</td></tr>
         <tr><th>제목</th><td>학교폭력대책심의위원회 개최 요구</td></tr>
         <tr><th>요구 사유</th><td style="white-space:pre-wrap">${blankCell(c.summary)}</td></tr>
-        <tr><th>첨부 서류</th><td style="white-space:pre-wrap">1. 학생 작성 확인서 1부.\n2. 보호자 확인서 1부.\n3. 목격학생 확인서 1부.\n4. 학교폭력 사안조사 보고서 1부.\n5. 피해·가해학생 긴급조치 보고서 1부.\n6. 전담기구 심의결과 보고서 1부.\n7. 피해·가해학생 보호자 개인정보 1부.\n8. 학생선수 확인을 위한 관련 서류 1부.\n9. 기타 심의위원회 심의·의결에 필요한 서류 각 1부. 끝.</td></tr>
+        <tr><th>첨부 서류</th><td style="white-space:pre-wrap">1. 학생 작성 확인서 1부.\n2. 보호자 확인서 1부.\n3. 목격학생 확인서 1부.\n4. 학교폭력 사안조사 보고서 1부.\n5. 피해·가해관련학생 긴급조치 보고서 1부.\n6. 전담기구 심의결과 보고서 1부.\n7. 피해·가해관련 학생 보호자 개인정보 정리표 1부.\n8. 학생선수 확인을 위한 관련 서류 1부.\n9. 기타 심의위원회 심의·의결에 필요한 서류 각 1부. 끝.</td></tr>
       </table>${tail}`,
 
-    form27: `${head('학교폭력 전담 조사관 자료 관리 대장','[양식2-7]  학교폭력 전담 조사관 자료 관리 대장')}<div class="meta">(${escapeHtml(school)})학교</div>${ledgerForm27Table()}<div class="meta" style="margin-top:8px">[참고] 책임교사는 위 대장을 작성하고 관리함 / 사안 종료 후 조사관은 모든 자료를 해당 학교를 방문하여 폐기하고 서명함 / 학교폭력 전담 조사관 자료 관리 대장은 학년도 말에 폐기함</div>${tail}`,
+    form27: `${head('학교폭력 전담조사관 자료 관리 대장','[서식13]  학교폭력 전담조사관 자료 관리 대장')}<div class="meta">(${escapeHtml(school)})학교</div>${ledgerForm27Table()}<div class="meta" style="margin-top:8px">[참고] 책임교사는 위 대장을 작성하고 관리함 / 사안 종료 후 조사관은 모든 자료를 해당 학교를 방문하여 폐기하고 서명함 / 학교폭력 전담조사관 자료 관리 대장은 학년도 말에 폐기함</div>${tail}`,
 
-    form31: `${head('학교폭력 전담기구 심의결과 보고서','[양식3-1]  학교폭력 전담기구 심의결과 보고서')}
+    form31: `${head('학교폭력 전담기구 심의결과 보고서','[서식18]  학교폭력 전담기구 심의결과 보고서 [자체해결]')}
       <div class="meta">${escapeHtml(caseRef(c, school))}</div>
       <table class="formTable">
         <tr><th>전담기구 심의일</th><td>${blankCell(dotDate(c.committeeDate))}</td><th>학교장 자체해결 부의 여부</th><td>${blankCell(c.selfResolve)}</td></tr>
-        <tr><th>피해학생 및 보호자 심의위원회 개최 요구 의사</th><td>${blankCell(c.parentAgree)}</td><th>전담기구 의견</th><td>${blankCell(selfResolveOpinion(c))}</td></tr>
+        <tr><th>피해관련학생 및 보호자 심의위원회 개최 요구 의사</th><td>${blankCell(c.parentAgree)}</td><th>전담기구 의견</th><td>${blankCell(selfResolveOpinion(c))}</td></tr>
         <tr><th>기타 의견</th><td colspan="3" style="white-space:pre-wrap">${blankCell(c.committeeReviewNote || c.memo)}</td></tr>
       </table>${tail}`,
 
-    form32: `${head('학교장 자체해결 동의서(학교폭력대책심의위원회 미개최 요구 의사 확인서)','[양식3-2]  학교장 자체해결 동의서')}
+    form32: `${head('학교장 자체해결 동의서(학교폭력대책심의위원회 미개최 요구 의사 확인서)','[서식20]  학교장 자체해결 동의서')}
       <div class="meta">${escapeHtml(caseRef(c, school))}</div>
       <table class="formTable">
-        <tr><th>피해학생</th><td>${blankCell(joinRoleNames(c.victims))}</td><th>피신고학생</th><td>${blankCell(joinRoleNames(c.perps))}</td></tr>
-        <tr><th>보호자 동의 여부</th><td>${blankCell(c.parentAgree)}</td><th>학교장 자체해결 검토</th><td>${blankCell(c.selfResolve)}</td></tr>
-        <tr><th>안내 문구</th><td colspan="3" style="white-space:pre-wrap">학교장 자체해결에 동의하는 경우 해당 사안에 대하여 학교폭력대책심의위원회 미개최를 요구하는 의사임을 확인합니다.</td></tr>
+        <tr><th>피해관련학생</th><td>${blankCell(joinRoleNames(c.victims))}</td><th>가해관련학생</th><td>${blankCell(joinRoleNames(c.perps))}</td></tr>
+        <tr><th>가해관련학생 측 태도</th><td>${blankCell(c.parentAgree)}</td><th>피해관련학생 측 요구</th><td>${blankCell(c.selfResolve)}</td></tr>
+        <tr><th>안내 문구</th><td colspan="3" style="white-space:pre-wrap">사안 조사 내용과 자체해결 요건을 확인하였으며 학교장 자체해결에 동의하는 경우 추후 동일 사안에 대해 심의위원회 개최를 요청할 수 없음을 확인합니다.</td></tr>
       </table>${tail}`,
 
-    form33: `${head('학교장 자체해결 결과 보고서','[양식3-3]  학교장 자체해결 결과 보고서')}
+    form33: `${head('학교장 (자체해결/종결) 결과 보고서','[서식22]  학교장 (자체해결/종결) 결과 보고서')}
       <div class="meta">${escapeHtml(caseRef(c, school))}</div>
       <table class="formTable">
         <tr><th>학교장 자체해결 결과</th><td>${blankCell(c.selfResolve)}</td><th>통보일</th><td>${blankCell(dotDate(c.actionDate || c.officeDate))}</td></tr>
@@ -1353,70 +1486,70 @@ function buildForm(c, type){
         <tr><th>교육(지원)청 통보</th><td colspan="3">${blankCell(c.officeReport)} ${c.officeDate ? '/ ' + escapeHtml(dotDate(c.officeDate)) : ''}</td></tr>
       </table>${tail}`,
 
-    form34: `${head('학교폭력대책심의위원회 개최 요청서','[양식3-4]  학교폭력대책심의위원회 개최 요청서')}
+    form34: `${head('학교폭력대책심의위원회 개최 요청서','[서식23]  학교폭력대책심의위원회 개최 요청서')}
       <div class="meta">${escapeHtml(caseRef(c, school))}</div>
       <table class="formTable">
         <tr><th>신청인</th><th>소속학교</th><th>학년/반</th><th>학생성명</th><th>보호자성명</th></tr>
-        <tr><td>피해학생측</td><td>${blankCell(school)}</td><td>${blankCell([victim.grade, victim.classNum].filter(Boolean).join('/'))}</td><td>${blankCell(victim.name)}</td><td>${blankCell(victim.guardian)}</td></tr>
+        <tr><td>피해관련학생측</td><td>${blankCell(school)}</td><td>${blankCell([victim.grade, victim.classNum].filter(Boolean).join('/'))}</td><td>${blankCell(victim.name)}</td><td>${blankCell(victim.guardian)}</td></tr>
         <tr><th>신청사유</th><td colspan="4" style="white-space:pre-wrap">${blankCell(c.summary)}</td></tr>
         <tr><th>요건 해당 여부</th><td colspan="4" style="white-space:pre-wrap">1. 재산상 손해를 복구하기로 약속하였으나 이행하지 않은 경우: □\n2. 조사과정에서 확인되지 않았던 사실이 추가적으로 확인된 경우: □</td></tr>
       </table>${tail}`,
 
-    form35: `${head('학교폭력대책심의위원회 개최 요구 취소 요청서','[양식3-5]  학교폭력대책심의위원회 개최 요구 취소 요청서')}
+    form35: `${head('학교폭력대책심의위원회 개최 요구 취소 요청서(보호자)','[서식26]  학교폭력대책심의위원회 개최 요구 취소 요청서(보호자)')}
       <div class="meta">${escapeHtml(caseRef(c, school))}</div>
       <table class="formTable">
         <tr><th>신청인</th><th>소속학교</th><th>학년/반</th><th>학생성명</th><th>보호자성명</th></tr>
-        <tr><td>피해학생측</td><td>${blankCell(school)}</td><td>${blankCell([victim.grade, victim.classNum].filter(Boolean).join('/'))}</td><td>${blankCell(victim.name)}</td><td>${blankCell(victim.guardian)}</td></tr>
+        <tr><td>피해관련학생측</td><td>${blankCell(school)}</td><td>${blankCell([victim.grade, victim.classNum].filter(Boolean).join('/'))}</td><td>${blankCell(victim.name)}</td><td>${blankCell(victim.guardian)}</td></tr>
         <tr><th>내용</th><td colspan="4" style="white-space:pre-wrap">이 사안에 대해서 학교폭력대책심의위원회 개최 요구를 취소하며 학교장 자체해결에 동의합니다.</td></tr>
       </table>${tail}`,
 
-    form36: `${head('학교폭력 아닌 사안의 종결 보고서','[양식3-6]  학교폭력 아닌 사안의 종결 보고서')}
+    form36: `${head('학교폭력 전담기구 심의결과 보고서 [종결]','[서식19]  학교폭력 전담기구 심의결과 보고서 [종결]')}
       <div class="meta">${escapeHtml(caseRef(c, school))}</div>
       <table class="formTable">
         <tr><th>종결 구분</th><td>학교폭력 아닌 사안</td><th>종결일</th><td>${blankCell(dotDate(c.closedDate))}</td></tr>
         <tr><th>종결 사유</th><td colspan="3" style="white-space:pre-wrap">${blankCell(c.memo || '조사 결과 학교폭력예방법상 학교폭력 사안으로 보기 어려워 종결 처리')}</td></tr>
       </table>${tail}`,
 
-    form37: `${head('학교폭력대책심의위원회 미개최 동의서','[양식3-7]  학교폭력대책심의위원회 미개최 동의서')}
+    form37: `${head('학교장 종결 처리 동의서','[서식21]  학교장 종결 처리 동의서')}
       <div class="meta">${escapeHtml(caseRef(c, school))}</div>
       <table class="formTable">
         <tr><th>학교장 자체해결 요건</th><td style="white-space:pre-wrap">${blankCell(selfResolveChecklistText())}</td></tr>
-        <tr><th>피해학생 보호자 동의</th><td>${blankCell(c.parentAgree)}</td></tr>
+        <tr><th>피해관련학생 보호자 동의</th><td>${blankCell(c.parentAgree)}</td></tr>
         <tr><th>비고</th><td>${blankCell(c.selfResolve)}</td></tr>
       </table>${tail}`,
 
-    form41: `${head('학교폭력 가해학생 조치사항 관리 대장(20OO학년도 입학생)','[양식4-1]  학교폭력 가해학생 조치사항 관리 대장(20OO학년도 입학생)')}<div class="meta">※ 보존기간: 졸업 후 4년 / ※ 학교폭력 가해학생 조치 조건부 기재유보 관리대장을 참고하여 학교폭력 조치사항 관리대장에 기재 / ※ 전출교에서는 전입교에 학교폭력 가해학생 조치사항 관련내용을 송부</div>${ledgerForm41Table()}${tail}`,
+    form41: `${head('학교폭력 가해학생 조치사항 관리 대장','[서식27]  학교폭력 가해학생 조치사항 관리 대장')}<div class="meta">※ 보존기간: 졸업 후 4년 / ※ 학교폭력 가해학생 조치 조건부 기재유보 관리대장을 참고하여 학교폭력 조치사항 관리대장에 기재 / ※ 전출교에서는 전입교에 학교폭력 가해학생 조치사항 관련내용을 송부</div>${ledgerForm41Table()}${tail}`,
 
-    form42: `${head('학교폭력 가해학생 조치(제1호·제2호·제3호) 조건부 기재유보 관리대장(20OO학년도 입학생)','[양식4-2]  학교폭력 가해학생 조치(제1호·제2호·제3호) 조건부 기재유보 관리대장(20OO학년도 입학생)')}<div class="meta">※ 보존기간: 졸업학년도 2월말에 폐기 / ※ 전출교에서는 전입교에 학교폭력 가해학생 조치 조건부 기재유보 관리대장을 송부</div><div class="meta" style="white-space:pre-wrap">[참고] 가해학생 조치사항(제1호·제2호·제3호)을 이행한 가해학생이 동일 학교급에서 다른 학교폭력 사안으로 가해학생 조치를 받지 않은 경우(초등학생은 조치를 받은 날부터 3년 경과)에 한해 조건부 기재하지 않음 / 다만 동일 학교급(초등학생은 3년 내)에서 다른 학교폭력 사안으로 다시 조치를 받은 경우에는 이전에 적지 않은 조치사항을 포함하여 기재 / 심의위원회가 정한 이행기간 내에 조치사항을 이행하지 않으면 이후 이행해도 기재내용은 유지</div>${ledgerForm42Table()}<div class="meta" style="margin-top:8px">※ 조치일자는 교육장 내부결재일(교육지원청에서 학교로 통보함) / ※ 조치이행 기간 내에 이행하지 않은 경우에는 해당란에 취소선을 그림</div>${tail}`,
+    form42: `${head('학교폭력 가해학생 조치(제1호·제2호·제3호) 조건부 기재유보 관리대장','[서식28]  학교폭력 가해학생 조치(제1호·제2호·제3호) 조건부 기재유보 관리대장')}<div class="meta">※ 보존기간: 졸업학년도 2월말에 폐기 / ※ 전출교에서는 전입교에 학교폭력 가해학생 조치 조건부 기재유보 관리대장을 송부</div><div class="meta" style="white-space:pre-wrap">[참고] 가해학생 조치사항(제1호·제2호·제3호)을 이행한 가해학생이 동일 학교급에서 다른 학교폭력 사안으로 가해학생 조치를 받지 않은 경우(초등학생은 조치를 받은 날부터 3년 경과)에 한해 조건부 기재하지 않음 / 다만 동일 학교급(초등학생은 3년 내)에서 다른 학교폭력 사안으로 다시 조치를 받은 경우에는 이전에 적지 않은 조치사항을 포함하여 기재 / 심의위원회가 정한 이행기간 내에 조치사항을 이행하지 않으면 이후 이행해도 기재내용은 유지</div>${ledgerForm42Table()}<div class="meta" style="margin-top:8px">※ 조치일자는 교육장 내부결재일(교육지원청에서 학교로 통보함) / ※ 조치이행 기간 내에 이행하지 않은 경우에는 해당란에 취소선을 그림</div>${tail}`,
 
-    form43: `${head('학교폭력 피해학생 관련 정보 제공 동의서','[양식4-3]  학교폭력 피해학생 관련 정보 제공 동의서')}
+    form43: `${head('학교폭력 피해학생 관련 정보 제공 동의서','[서식41]  학교폭력 피해학생 관련 정보 제공 동의서')}
       <div class="meta">${escapeHtml(caseRef(c, school))}</div>
       <table class="formTable">
-        <tr><th>피해학생</th><td>${blankCell(victim.name)}</td><th>보호자</th><td>${blankCell(victim.guardian)}</td></tr>
-        <tr><th>제공 목적</th><td colspan="3">전입교 및 상급학교에서의 피해학생 보호 및 지원을 위하여 관련 정보를 제공합니다.</td></tr>
+        <tr><th>피해관련학생</th><td>${blankCell(victim.name)}</td><th>보호자</th><td>${blankCell(victim.guardian)}</td></tr>
+        <tr><th>제공 목적</th><td colspan="3">전입교 및 상급학교에서의 피해관련학생 보호 및 지원을 위하여 관련 정보를 제공합니다.</td></tr>
         <tr><th>제공 동의 내용</th><td colspan="3" style="white-space:pre-wrap">${blankCell(c.damage || c.summary)}</td></tr>
       </table>${tail}`,
 
-    form44: `${head('학교폭력 피해학생 관련 정보 카드','[양식4-4]  학교폭력 피해학생 관련 정보 카드')}
+    form44: `${head('학교폭력 피해학생 관련 정보 카드','[서식42]  학교폭력 피해학생 관련 정보 카드')}
       <div class="meta">${escapeHtml(caseRef(c, school))}</div>
       <table class="formTable">
-        <tr><th>피해학생</th><td>${blankCell(victim.name)}</td><th>학교/학년/반</th><td>${blankCell(`${school} / ${gradeClassText(victim)}`)}</td></tr>
+        <tr><th>피해관련학생</th><td>${blankCell(victim.name)}</td><th>학교/학년/반</th><td>${blankCell(`${school} / ${gradeClassText(victim)}`)}</td></tr>
         <tr><th>보호 및 지원 필요사항</th><td colspan="3" style="white-space:pre-wrap">${blankCell(c.damage || '상담, 심리정서 지원, 학급 적응 지원')}</td></tr>
         <tr><th>학교 메모</th><td colspan="3" style="white-space:pre-wrap">${blankCell(c.memo)}</td></tr>
       </table>${tail}`,
 
-    form45: `${head('집행정지 결정에 따른 분리 요청서','[양식4-5]  집행정지 결정에 따른 분리 요청서')}
+    form45: `${head('집행정지 결정에 따른 분리 요청서','[서식43]  집행정지 결정에 따른 분리 요청서')}
       <div class="meta">※ 교육지원청으로부터 받은 '조치결정 통보서' 첨부</div>
       <div class="meta">${escapeHtml(caseRef(c, school))}</div>
       <table class="formTable">
         <tr><th></th><th>소속학교</th><th>학년/반</th><th>학생 성명</th><th>보호자 성명</th></tr>
-        <tr><th>피해학생</th><td>${blankCell(school)}</td><td>${blankCell([victim.grade, victim.classNum].filter(Boolean).join('/'))}</td><td>${blankCell(victim.name)}</td><td>${blankCell(victim.guardian)}</td></tr>
-        <tr><th>가해학생</th><td>${blankCell(school)}</td><td>${blankCell([perp.grade, perp.classNum].filter(Boolean).join('/'))}</td><td>${blankCell(perp.name)}</td><td>${blankCell(perp.guardian)}</td></tr>
+        <tr><th>피해관련학생</th><td>${blankCell(school)}</td><td>${blankCell([victim.grade, victim.classNum].filter(Boolean).join('/'))}</td><td>${blankCell(victim.name)}</td><td>${blankCell(victim.guardian)}</td></tr>
+        <tr><th>가해관련학생</th><td>${blankCell(school)}</td><td>${blankCell([perp.grade, perp.classNum].filter(Boolean).join('/'))}</td><td>${blankCell(perp.name)}</td><td>${blankCell(perp.guardian)}</td></tr>
         <tr><th>분리 요청 이유</th><td colspan="4" style="white-space:pre-wrap">${blankCell(c.memo || c.damage || c.summary)}</td></tr>
       </table>
-      <div style="margin-top:12px">「학교폭력예방법」 제17조의4 제3항에 따라, 가해학생과의 분리를 요청합니다.</div>${tail}`,
+      <div style="margin-top:12px">「학교폭력예방법」 제17조의4 제3항에 따라, 가해관련학생과의 분리를 요청합니다.</div>${tail}`,
 
-    form51: `${head('분쟁조정 신청서','[양식5-1] 분쟁조정 신청서')}
+    form51: `${head('분쟁조정 신청서','[참고서식] 분쟁조정 신청서')}
       <div class="meta">${escapeHtml(caseRef(c, school))}</div>
       <table class="formTable">
         <tr><th rowspan="3">학생</th><th>학교, 학년, 반</th><td>${blankCell([school, victim.grade ? `${victim.grade}학년` : '', victim.classNum ? `${victim.classNum}반` : ''].filter(Boolean).join(' '))}</td></tr>
@@ -1444,8 +1577,8 @@ function previewCurrentCase(){
 
 
 function receiptCsvText(){
-  const head=['사안번호','신고접수 일시','사고자(연락처) 또는 신고기관','신고내용','접수 사실 통보 피해관련 학생/보호자','접수 사실 통보 가해관련 학생/보호자','가해자와 피해학생 분리','작성자(책임교사)'];
-  const rows=[...appState.cases].sort((a,b)=>(a.caseNo||'').localeCompare(b.caseNo||'')).map(c=>[c.caseNo,dotDateTime(c.recvAt),reportIdentityText(c),c.summary,c.victimNotify,c.perpNotify,c.separation,c.teacher||appState.settings.teacher]);
+  const head=['사안번호','신고접수 일시','사고자(연락처) 또는 신고기관','신고내용','접수 사실 통보 피해관련 학생/보호자','접수 사실 통보 가해관련 학생/보호자','가해관련 학생과 피해관련 학생 분리','작성자(책임교사)'];
+  const rows=[...appState.cases].sort((a,b)=>(a.caseNo||'').localeCompare(b.caseNo||'')).map(c=>[c.caseNo,dotDateTime(c.recvAt),reportIdentityText(c),c.summary,c.victimNotify,c.perpNotify,formatSeparationDisplay(c),c.teacher||appState.settings.teacher]);
   return [head,...rows].map(r=>r.map(csvEscape).join(',')).join('\n');
 }
 function investigatorCsvText(){
@@ -1474,10 +1607,10 @@ function statsCsvText(){
   const head=['월','건수']; const monthCount=Array.from({length:12},()=>0); appState.cases.forEach(c=>{ const m = c.recvAt?Number(c.recvAt.slice(5,7))-1:null; if(m>=0) monthCount[m]++; });
   return [head,...monthCount.map((n,i)=>[`${i+1}월`,n])].map(r=>r.map(csvEscape).join(',')).join('\n');
 }
-function downloadReceiptCSV(){downloadBlob(`양식1-1_학교폭력신고접수대장_${today()}.csv`, '\ufeff'+receiptCsvText(), 'text/csv;charset=utf-8')}
-function downloadInvestigatorCSV(){downloadBlob(`양식2-7_조사관자료관리대장_${today()}.csv`, '\ufeff'+investigatorCsvText(), 'text/csv;charset=utf-8')}
-function downloadActionMgmtCSV(){downloadBlob(`양식4-1_가해학생조치사항관리대장_${today()}.csv`, '\ufeff'+actionMgmtCsvText(), 'text/csv;charset=utf-8')}
-function downloadDeferCSV(){downloadBlob(`양식4-2_조건부기재유보관리대장_${today()}.csv`, '\ufeff'+deferCsvText(), 'text/csv;charset=utf-8')}
+function downloadReceiptCSV(){downloadBlob(`서식3_학교폭력신고접수대장_${today()}.csv`, '\ufeff'+receiptCsvText(), 'text/csv;charset=utf-8')}
+function downloadInvestigatorCSV(){downloadBlob(`서식13_전담조사관자료관리대장_${today()}.csv`, '\ufeff'+investigatorCsvText(), 'text/csv;charset=utf-8')}
+function downloadActionMgmtCSV(){downloadBlob(`서식27_가해관련학생조치사항관리대장_${today()}.csv`, '\ufeff'+actionMgmtCsvText(), 'text/csv;charset=utf-8')}
+function downloadDeferCSV(){downloadBlob(`서식28_조건부기재유보기록_${today()}.csv`, '\ufeff'+deferCsvText(), 'text/csv;charset=utf-8')}
 function downloadStatsCSV(){downloadBlob(`통계현황_${today()}.csv`, '\ufeff'+statsCsvText(), 'text/csv;charset=utf-8')}
 function printTableById(title, tableId, note=''){
   const table = document.getElementById(tableId)?.closest('.tableWrap');
@@ -1485,10 +1618,10 @@ function printTableById(title, tableId, note=''){
   $('printArea').innerHTML = `<div class="previewWrap"><div class="printForm"><h2>${escapeHtml(title)}</h2>${note?`<div class="meta">${escapeHtml(note)}</div>`:''}${table.outerHTML}</div></div>`;
   window.print(); setTimeout(()=>$('printArea').innerHTML='',700);
 }
-function printReceiptLedger(){ printTableById('학교폭력 신고 접수 대장', 'receiptLedgerBody', `[양식1-1] (${appState.settings.school || ''})학교`); }
-function printInvestigatorLedger(){ printTableById('학교폭력 전담 조사관 자료 관리 대장', 'investigatorLedgerBody', `[양식2-7] (${appState.settings.school || ''})학교`); }
-function printActionMgmtLedger(){ printTableById('학교폭력 가해학생 조치사항 관리 대장(20OO학년도 입학생)', 'actionMgmtLedgerBody', '[양식4-1]'); }
-function printDeferLedger(){ printTableById('학교폭력 가해학생 조치(제1호·제2호·제3호) 조건부 기재유보 관리대장(20OO학년도 입학생)', 'deferLedgerBody', '[양식4-2]'); }
+function printReceiptLedger(){ printTableById('학교폭력 신고 접수 대장', 'receiptLedgerBody', `[서식3] (${appState.settings.school || ''})학교`); }
+function printInvestigatorLedger(){ printTableById('학교폭력 전담조사관 자료 관리 대장', 'investigatorLedgerBody', `[서식13] (${appState.settings.school || ''})학교`); }
+function printActionMgmtLedger(){ printTableById('학교폭력 가해학생 조치사항 관리 대장', 'actionMgmtLedgerBody', '[서식27]'); }
+function printDeferLedger(){ printTableById('학교폭력 가해학생 조치(제1호·제2호·제3호) 조건부 기재유보 관리대장', 'deferLedgerBody', '[서식28]'); }
 function loadSettingsToUI(){
   $('setSchool').value = appState.settings.school||''; $('setTeacher').value = appState.settings.teacher||''; $('setPosition').value = appState.settings.position||'';
   $('setVicePrincipal').value = appState.settings.vicePrincipal||''; $('setTeacherMobile').value = appState.settings.teacherMobile||''; $('setViceMobile').value = appState.settings.viceMobile||'';
@@ -1574,17 +1707,11 @@ function updateGuideWarnings(){
   }
 }
 $('violenceType').addEventListener('change', updateGuideWarnings);
+$('recvAt').addEventListener('change', ()=>updateCommitteeDateOptions($('recvAt').value, $('committeeDate').value));
 
 // init
-setupSelects(); setupTabs(); initForm(true); renderPersonList('victim'); renderPersonList('perp'); renderAll();
+setupSelects(); setupTabs(); renderCheckboxGroup('victimDemandGroup', VICTIM_DEMAND_OPTIONS, 'victimDemandOther'); renderCheckboxGroup('perpAttitudeGroup', PERP_ATTITUDE_OPTIONS, 'perpAttitudeOther'); initForm(true); renderPersonList('victim'); renderPersonList('perp'); renderEmergencyMeasures(); updateCommitteeDateOptions($('recvAt').value); $('recvAt').addEventListener('change', ()=>updateCommitteeDateOptions($('recvAt').value, $('committeeDate').value)); renderAll();
 $('loginPw').addEventListener('keydown', e=>{ if(e.key==='Enter') login(); });
-</script>
-<script>
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js').catch(() => {});
-  });
-}
 </script>
 </body>
 </html>
