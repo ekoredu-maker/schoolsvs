@@ -12,7 +12,7 @@
     --font:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo',sans-serif;
   }
   *{box-sizing:border-box}
-  body{margin:0;font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh}
+  body{margin:0;font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;padding-bottom:56px}
   button,input,select,textarea{font:inherit}
   button{cursor:pointer}
   .hidden{display:none!important}
@@ -23,6 +23,8 @@
   .loginTitle{font-size:1.35rem;font-weight:800;color:var(--primary);margin:0 0 8px}
   .loginDesc{color:var(--muted);font-size:.92rem;margin:0 0 20px;line-height:1.55}
   .pwHint{font-size:.8rem;color:#7b8794;margin-top:10px}
+
+  .loginFoot{margin-top:14px;color:#6b7280;font-size:.82rem;text-align:center;line-height:1.35}
 
   /* layout */
   #app{display:none;min-height:100vh;flex-direction:column}
@@ -144,7 +146,7 @@
   #toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#0f172a;color:#fff;padding:12px 18px;border-radius:12px;display:none;z-index:99999}
   .privacy td:not(.keep), .privacy .masked{filter:blur(7px);user-select:none}
   .privacy .keep{filter:none!important}
-  footer{padding:14px;text-align:center;background:#173a5c;color:rgba(255,255,255,.7);font-size:.82rem}
+  footer{position:fixed;left:0;right:0;bottom:0;padding:10px 14px;text-align:center;background:#173a5c;color:rgba(255,255,255,.78);font-size:.82rem;z-index:40}
 
   @media (max-width:980px){.grid4,.grid3,.grid2{grid-template-columns:1fr 1fr}.steps{grid-template-columns:repeat(4,1fr)}}
   @media (max-width:760px){
@@ -171,6 +173,7 @@
     <div class="field"><label>비밀번호</label><input id="loginPw" type="password" maxlength="32" placeholder="비밀번호 입력" /></div>
     <div class="btnRow" style="margin-top:12px"><button class="btn primary" onclick="login()">로그인</button></div>
     <div id="loginMsg" class="pwHint"></div>
+    <div class="loginFoot">© 2026 강창원. All rights reserved. · 무단 복제/배포 금지</div>
   </div>
 </div>
 
