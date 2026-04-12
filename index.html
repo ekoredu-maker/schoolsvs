@@ -12,7 +12,7 @@
     --font:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo',sans-serif;
   }
   *{box-sizing:border-box}
-  body{margin:0;font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh}
+  body{margin:0;font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;padding-bottom:56px}
   button,input,select,textarea{font:inherit}
   button{cursor:pointer}
   .hidden{display:none!important}
@@ -23,6 +23,8 @@
   .loginTitle{font-size:1.35rem;font-weight:800;color:var(--primary);margin:0 0 8px}
   .loginDesc{color:var(--muted);font-size:.92rem;margin:0 0 20px;line-height:1.55}
   .pwHint{font-size:.8rem;color:#7b8794;margin-top:10px}
+
+  .loginFoot{margin-top:14px;color:#6b7280;font-size:.82rem;text-align:center;line-height:1.35}
 
   /* layout */
   #app{display:none;min-height:100vh;flex-direction:column}
@@ -144,7 +146,7 @@
   #toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#0f172a;color:#fff;padding:12px 18px;border-radius:12px;display:none;z-index:99999}
   .privacy td:not(.keep), .privacy .masked{filter:blur(7px);user-select:none}
   .privacy .keep{filter:none!important}
-  footer{padding:14px;text-align:center;background:#173a5c;color:rgba(255,255,255,.7);font-size:.82rem}
+  footer{position:fixed;left:0;right:0;bottom:0;padding:10px 14px;text-align:center;background:#173a5c;color:rgba(255,255,255,.78);font-size:.82rem;z-index:40}
 
   @media (max-width:980px){.grid4,.grid3,.grid2{grid-template-columns:1fr 1fr}.steps{grid-template-columns:repeat(4,1fr)}}
   @media (max-width:760px){
@@ -155,11 +157,24 @@
     .steps{grid-template-columns:repeat(2,1fr)}
     .topActions .labelHide{display:none}
   }
+  .printSheet{background:#fff; width:190mm; margin:0 auto; page-break-after:auto}
+  .printSheet .formTable{table-layout:fixed}
+  .printSheet .formTable th,.printSheet .formTable td{word-break:break-word}
+  .printSheet .formTable tr,.printSheet .formTable td,.printSheet .formTable th{page-break-inside:avoid}
+  .printOnlyNote{display:none}
   @media print{
+    @page{size:A4; margin:12mm}
     body *{visibility:hidden!important}
     #printArea,#printArea *{visibility:visible!important}
-    #printArea{display:block!important;position:fixed;inset:0;background:#fff;padding:22px;overflow:auto}
+    #printArea{display:block!important;position:fixed;inset:0;background:#fff;padding:0;overflow:visible}
+    #printArea .previewWrap{border:none!important;box-shadow:none!important;border-radius:0!important;padding:0!important;max-width:none!important}
+    #printArea .printForm{font-size:11.4px;line-height:1.4}
+    #printArea .formTable{page-break-inside:auto}
+    #printArea .formTable thead{display:table-header-group}
+    #printArea .formTable tr,#printArea .formTable td,#printArea .formTable th{page-break-inside:avoid}
+    #printArea .printSheet{width:auto;margin:0;page-break-after:auto}
     .noPrint{display:none!important}
+    .printOnlyNote{display:block!important}
   }
 </style>
 </head>
@@ -171,6 +186,7 @@
     <div class="field"><label>비밀번호</label><input id="loginPw" type="password" maxlength="32" placeholder="비밀번호 입력" /></div>
     <div class="btnRow" style="margin-top:12px"><button class="btn primary" onclick="login()">로그인</button></div>
     <div id="loginMsg" class="pwHint"></div>
+    <div class="loginFoot">© 2026 강창원. All rights reserved. · 무단 복제/배포 금지</div>
   </div>
 </div>
 
@@ -397,30 +413,30 @@
       <section class="page" id="page-forms">
         <div class="pageHead"><div><h1>📄 서식 출력</h1><p>충청북도교육청 『2026. 학교폭력 사안처리 A to Z』의 서식·공문 번호와 명칭을 기준으로 인쇄용 문서를 생성합니다.</p></div></div>
         <div class="card noPrint">
-          <div class="notice">서식명은 충청북도교육청 『2026. 학교폭력 사안처리 A to Z』의 번호 체계를 우선 반영했습니다. 보조서식은 별도로 표시했으며, 실제 제출 전에는 최신 원문 서식과 문구·결재란을 한 번 더 대조하세요.</div>
+          <div class="notice">서식명은 충청북도교육청 『2026. 학교폭력 사안처리 A to Z』의 번호 체계를 우선 반영했습니다. 보조서식은 별도로 표시했으며, 실제 제출 전에는 최신 원문 서식과 문구·결재란을 한 번 더 대조하세요. 출력은 고정 2페이지가 아니라 내용량에 따라 자동으로 나뉘도록 조정했습니다.</div>
           <div class="row">
             <div class="field"><label>사안 선택</label><select id="formCase" onchange="renderFormPreview()"></select></div>
             <div class="field"><label>서식 선택</label><select id="formType" onchange="renderFormPreview()"></select></div>
           </div>
         </div>
         <div id="formPreviewHost"></div>
-        <div class="btnRow noPrint" id="formButtons" style="display:none"><button class="btn primary" onclick="printCurrent()">🖨 인쇄</button><button class="btn outline" onclick="downloadCurrentText()">⬇ 텍스트 저장</button></div>
+        <div class="btnRow noPrint" id="formButtons" style="display:none"><button class="btn primary" onclick="downloadCurrentPDF()">⬇ PDF 저장</button><button class="btn success" onclick="downloadCurrentExcel()">⬇ 엑셀 저장</button><button class="btn outline" onclick="printCurrent()">🖨 인쇄</button></div>
       </section>
 
       <section class="page" id="page-ledgers">
-        <div class="pageHead"><div><h1>📚 대장 관리</h1><p>충청북도교육청 『2026. 학교폭력 사안처리 A to Z』 표제에 맞춘 대장 화면입니다. 신고 접수 대장, 전담조사관 자료 관리 대장, 가해관련학생 조치사항 관리 대장, 조건부 기재유보 관리대장을 바로 확인·인쇄·CSV 저장할 수 있습니다.</p></div></div>
+        <div class="pageHead"><div><h1>📚 대장 관리</h1><p>충청북도교육청 『2026. 학교폭력 사안처리 A to Z』 표제에 맞춘 대장 화면입니다. 신고 접수 대장, 전담조사관 자료 관리 대장, 가해관련학생 조치사항 관리 대장, 조건부 기재유보 관리대장을 바로 확인하고 PDF 또는 엑셀로 저장할 수 있습니다.</p></div></div>
         <div class="tabs noPrint" id="ledgerTabs"></div>
 
         <div class="tabPane active" id="ledger-receipt-pane">
           <div class="card">
-            <div class="btnRow noPrint" style="margin-bottom:12px"><button class="btn success" onclick="downloadReceiptCSV()">[양식1-1] CSV</button><button class="btn outline" onclick="printReceiptLedger()">인쇄</button></div>
+            <div class="btnRow noPrint" style="margin-bottom:12px"><button class="btn primary" onclick="downloadReceiptPDF()">[서식3] PDF</button><button class="btn success" onclick="downloadReceiptExcel()">[서식3] 엑셀</button><button class="btn outline" onclick="printReceiptLedger()">인쇄</button></div>
             <div class="tableWrap"><table><thead><tr><th>사안번호</th><th>신고접수 일시</th><th>사고자(연락처) 또는 신고기관</th><th>신고내용</th><th>접수 사실 통보<br>피해관련 학생/보호자</th><th>접수 사실 통보<br>가해관련 학생/보호자</th><th>가해관련 학생과 피해관련 학생 분리</th><th>작성자(책임교사)</th></tr></thead><tbody id="receiptLedgerBody"></tbody></table></div>
           </div>
         </div>
 
         <div class="tabPane" id="ledger-investigator-pane">
           <div class="card">
-            <div class="btnRow noPrint" style="margin-bottom:12px"><button class="btn success" onclick="downloadInvestigatorCSV()">[양식2-7] CSV</button><button class="btn outline" onclick="printInvestigatorLedger()">인쇄</button></div>
+            <div class="btnRow noPrint" style="margin-bottom:12px"><button class="btn primary" onclick="downloadInvestigatorPDF()">[서식13] PDF</button><button class="btn success" onclick="downloadInvestigatorExcel()">[서식13] 엑셀</button><button class="btn outline" onclick="printInvestigatorLedger()">인쇄</button></div>
             <div class="tableWrap"><table><thead><tr><th>사안번호</th><th>자료명</th><th>사본 제공일</th><th>사본 제공자</th><th>조사관명</th><th>자료 폐기일</th><th>폐기자</th></tr></thead><tbody id="investigatorLedgerBody"></tbody></table></div>
           </div>
         </div>
@@ -428,7 +444,7 @@
         <div class="tabPane" id="ledger-action-pane">
           <div class="card">
             <div class="notice" style="margin-bottom:12px">[서식27]의 제목은 원문과 같이 "(20OO학년도 입학생)" 기준입니다. 실제 사용 시 학적 기준으로 확인하세요.</div>
-            <div class="btnRow noPrint" style="margin-bottom:12px"><button class="btn success" onclick="downloadActionMgmtCSV()">[서식27] CSV</button><button class="btn outline" onclick="printActionMgmtLedger()">인쇄</button></div>
+            <div class="btnRow noPrint" style="margin-bottom:12px"><button class="btn primary" onclick="downloadActionMgmtPDF()">[서식27] PDF</button><button class="btn success" onclick="downloadActionMgmtExcel()">[서식27] 엑셀</button><button class="btn outline" onclick="printActionMgmtLedger()">인쇄</button></div>
             <div class="tableWrap"><table><thead><tr><th>학년</th><th>반</th><th>번호</th><th>성명</th><th>조치일자</th><th>졸업예정일(월)</th><th>학교폭력 조치사항(기재유보 조치 포함)</th><th>전담기구 심의 사항(제4호, 제5호, 제6호, 제7호)</th><th>삭제 시기(월)</th></tr></thead><tbody id="actionMgmtLedgerBody"></tbody></table></div>
           </div>
         </div>
@@ -436,16 +452,16 @@
         <div class="tabPane" id="ledger-defer-pane">
           <div class="card">
             <div class="notice" style="margin-bottom:12px">[서식28]는 제1호·제2호·제3호 조건부 기재유보 관리용입니다. 원문 주석처럼 조치일자는 교육장 내부결재일 기준으로 확인해야 합니다.</div>
-            <div class="btnRow noPrint" style="margin-bottom:12px"><button class="btn success" onclick="downloadDeferCSV()">[서식28] CSV</button><button class="btn outline" onclick="printDeferLedger()">인쇄</button></div>
+            <div class="btnRow noPrint" style="margin-bottom:12px"><button class="btn primary" onclick="downloadDeferPDF()">[서식28] PDF</button><button class="btn success" onclick="downloadDeferExcel()">[서식28] 엑셀</button><button class="btn outline" onclick="printDeferLedger()">인쇄</button></div>
             <div class="tableWrap"><table><thead><tr><th>학년</th><th>반</th><th>번호</th><th>성명</th><th>조치일자(이행기간)</th><th>조치사항</th><th>이행 완료일</th><th>비고</th></tr></thead><tbody id="deferLedgerBody"></tbody></table></div>
           </div>
         </div>
       </section>
 
       <section class="page" id="page-stats">
-        <div class="pageHead"><div><h1>📈 통계 현황</h1><p>월별 접수와 폭력 유형별 현황을 확인하고 CSV로 저장할 수 있습니다.</p></div></div>
+        <div class="pageHead"><div><h1>📈 통계 현황</h1><p>월별 접수와 폭력 유형별 현황을 확인하고 엑셀로 저장할 수 있습니다.</p></div></div>
         <div class="stats" id="statsBoxes"></div>
-        <div class="card"><h3 class="cardTitle">월별 신고 접수</h3><div id="monthBars" class="bars"></div><div class="btnRow noPrint" style="margin-top:12px"><button class="btn success" onclick="downloadStatsCSV()">통계 CSV</button></div></div>
+        <div class="card"><h3 class="cardTitle">월별 신고 접수</h3><div id="monthBars" class="bars"></div><div class="btnRow noPrint" style="margin-top:12px"><button class="btn success" onclick="downloadStatsExcel()">통계 엑셀</button></div></div>
         <div class="card"><h3 class="cardTitle">유형별 분포</h3><div id="typeBars" class="bars"></div></div>
       </section>
 
@@ -500,6 +516,7 @@
   </div>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <script>
 const STORAGE_PREFIX = 'sv_assist_v2_';
 const REPORT_TYPES = ['직접신고(피해관련학생)','보호자 신고','교사 인지','목격자 신고','117 신고','온라인 신고','기타'];
@@ -995,7 +1012,8 @@ function setCheckboxGroup(hostId, values, otherId){
 }
 function addEmergencyMeasure(value){ appState.emergencyMeasures.push(value || defaultEmergencyMeasure()); renderEmergencyMeasures(); saveDraftSilently(); }
 function removeEmergencyMeasure(idx){ appState.emergencyMeasures.splice(idx,1); renderEmergencyMeasures(); saveDraftSilently(); }
-function updateEmergencyMeasure(idx, field, value){ appState.emergencyMeasures[idx][field]=value; renderEmergencyMeasures(); saveDraftSilently(); }
+function updateEmergencyMeasure(idx, field, value){ appState.emergencyMeasures[idx][field]=value; saveDraftSilently(); }
+function updateEmergencyMeasureAndRender(idx, field, value){ appState.emergencyMeasures[idx][field]=value; renderEmergencyMeasures(); saveDraftSilently(); }
 function renderEmergencyMeasures(){
   const host = $('emergencyMeasuresList');
   if(!host) return;
@@ -1003,18 +1021,17 @@ function renderEmergencyMeasures(){
     <div class="personTitle">긴급조치 ${idx+1}</div>
     <button type="button" class="removeMini" onclick="removeEmergencyMeasure(${idx})">삭제</button>
     <div class="row">
-      <div class="field"><label>긴급조치 여부</label><select onchange="updateEmergencyMeasure(${idx},'kind',this.value)"><option value="">-- 선택 --</option><option ${m.kind==='피해(관련)학생 보호조치'?'selected':''}>피해(관련)학생 보호조치</option><option ${m.kind==='가해(관련)학생 선도조치'?'selected':''}>가해(관련)학생 선도조치</option></select></div>
-      <div class="field"><label>이름</label><input value="${escapeHtml(m.name||'')}" ${m.kind==='피해(관련)학생 보호조치'?'':'disabled'} oninput="updateEmergencyMeasure(${idx},'name',this.value)"></div>
+      <div class="field"><label>긴급조치 여부</label><select onchange="updateEmergencyMeasureAndRender(${idx},'kind',this.value)"><option value="">-- 선택 --</option><option ${m.kind==='피해(관련)학생 보호조치'?'selected':''}>피해(관련)학생 보호조치</option><option ${m.kind==='가해(관련)학생 선도조치'?'selected':''}>가해(관련)학생 선도조치</option></select></div>
+      <div class="field"><label>학생 성명</label><input value="${escapeHtml(m.name||'')}" ${m.kind==='피해(관련)학생 보호조치'?'':'disabled'} oninput="updateEmergencyMeasure(${idx},'name',this.value)"></div>
       <div class="field"><label>피해(관련)학생 조치</label><select ${m.kind==='피해(관련)학생 보호조치'?'':'disabled'} onchange="updateEmergencyMeasure(${idx},'victimAction',this.value)"><option value="">-- 선택 --</option>${['1호','2호','3호','6호'].map(v=>`<option ${m.victimAction===v?'selected':''}>${v}</option>`).join('')}</select></div>
     </div>
     <div class="row">
-      <div class="field"><label>가해(관련)학생 조치 근거</label><select ${m.kind==='가해(관련)학생 선도조치'?'':'disabled'} onchange="updateEmergencyMeasure(${idx},'offenderBasis',this.value)"><option value="">-- 선택 --</option><option ${m.offenderBasis==='학교장 판단'?'selected':''}>학교장 판단</option><option ${m.offenderBasis==='피해관련학생측 요청'?'selected':''}>피해관련학생측 요청</option></select></div>
-      <div class="field"><label>가해(관련)학생 조치</label><select ${(m.kind==='가해(관련)학생 선도조치' && m.offenderBasis)?'':'disabled'} onchange="updateEmergencyMeasure(${idx},'offenderAction',this.value)"><option value="">-- 선택 --</option>${(m.offenderBasis==='피해관련학생측 요청'?['6호','7호']:(m.offenderBasis==='학교장 판단'?['1호','3호','5호','6호','7호']:[])).map(v=>`<option ${m.offenderAction===v?'selected':''}>${v}</option>`).join('')}</select>${(['6호','7호'].includes(m.offenderAction) && m.offenderBasis==='피해관련학생측 요청')?'<div class="help" style="color:#b45309;font-weight:700">전담기구 심의 필수</div>':''}</div>
+      <div class="field"><label>가해(관련)학생 조치 근거</label><select ${m.kind==='가해(관련)학생 선도조치'?'':'disabled'} onchange="updateEmergencyMeasureAndRender(${idx},'offenderBasis',this.value)"><option value="">-- 선택 --</option><option ${m.offenderBasis==='학교장 판단'?'selected':''}>학교장 판단</option><option ${m.offenderBasis==='피해관련학생측 요청'?'selected':''}>피해관련학생측 요청</option></select></div>
+      <div class="field"><label>가해(관련)학생 조치</label><select ${(m.kind==='가해(관련)학생 선도조치' && m.offenderBasis)?'':'disabled'} onchange="updateEmergencyMeasureAndRender(${idx},'offenderAction',this.value)"><option value="">-- 선택 --</option>${(m.offenderBasis==='피해관련학생측 요청'?['6호','7호']:(m.offenderBasis==='학교장 판단'?['1호','3호','5호','6호','7호']:[])).map(v=>`<option ${m.offenderAction===v?'selected':''}>${v}</option>`).join('')}</select>${(['6호','7호'].includes(m.offenderAction) && m.offenderBasis==='피해관련학생측 요청')?'<div class="help" style="color:#b45309;font-weight:700">전담기구 심의 필수</div>':''}</div>
       <div class="field"><label>전담기구 심의 결과</label><select ${(['6호','7호'].includes(m.offenderAction) && m.offenderBasis==='피해관련학생측 요청')?'':'disabled'} onchange="updateEmergencyMeasure(${idx},'offenderReviewResult',this.value)"><option value="">-- 선택 --</option>${['전담기구 심의 결과 긴급조치 미시행','전담기구 심의 결과 6호','전담기구 심의 결과 7호'].map(v=>`<option ${m.offenderReviewResult===v?'selected':''}>${v}</option>`).join('')}</select></div>
     </div>
   </div>`).join('') : '<div class="empty">등록된 긴급조치가 없습니다.</div>';
 }
-
 function updateCommitteeDateOptions(recvAt, selected=''){
   const el = $('committeeDate');
   if(!el) return;
@@ -1566,8 +1583,57 @@ function buildForm(c, type){
   return forms[type] || `${head(formTitle(type))}${tail}`;
 }
 function formTitle(type){ return (FORM_TYPES.find(x=>x[0]===type)||['','서식'])[1]; }
-function printCurrent(){ const cur=document.getElementById('currentPrintable'); if(!cur) return; $('printArea').innerHTML=cur.outerHTML; window.print(); setTimeout(()=>{$('printArea').innerHTML='';},700); }
-function downloadCurrentText(){ const cur=document.getElementById('currentPrintable'); if(!cur) return; downloadBlob(`학교폭력서식_${today()}.txt`, cur.innerText || cur.textContent); }
+function printCurrent(){ const cur=document.getElementById('currentPrintable'); if(!cur) return; $('printArea').innerHTML=`<div class="printSheet">${cur.outerHTML}</div>`; window.print(); setTimeout(()=>{$('printArea').innerHTML='';},700); }
+function createExcelHtml(title, bodyHtml){
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>
+  table{border-collapse:collapse;width:100%} th,td{border:1px solid #666;padding:6px 8px;vertical-align:top}
+  h2{margin:0 0 12px;text-align:center} .meta{margin:0 0 10px;text-align:center;color:#444}
+  body{font-family:'Malgun Gothic','맑은 고딕',sans-serif;font-size:12px}
+  </style></head><body><h2>${escapeHtml(title)}</h2>${bodyHtml}</body></html>`;
+}
+function downloadHtmlAsExcel(filename, html){ downloadBlob(filename, '\ufeff'+html, 'application/vnd.ms-excel;charset=utf-8'); }
+function downloadCurrentExcel(){
+  const cur=document.getElementById('currentPrintable'); if(!cur) return;
+  const title = cur.querySelector('h2')?.textContent?.trim() || '학교폭력서식';
+  downloadHtmlAsExcel(`${title}_${today()}.xls`, createExcelHtml(title, cur.innerHTML));
+}
+async function downloadCurrentPDF(){
+  const cur=document.getElementById('currentPrintable'); if(!cur) return;
+  const title = cur.querySelector('h2')?.textContent?.trim() || '학교폭력서식';
+  if(window.html2pdf){
+    const wrap = document.createElement('div');
+    wrap.className = 'printSheet';
+    wrap.innerHTML = cur.outerHTML;
+    const opt = { margin:[10,10,10,10], filename:`${title}_${today()}.pdf`, image:{type:'jpeg', quality:0.98}, html2canvas:{scale:2, useCORS:true}, jsPDF:{unit:'mm', format:'a4', orientation:'portrait'}, pagebreak:{mode:['css','legacy']} };
+    await window.html2pdf().set(opt).from(wrap).save();
+  } else {
+    printCurrent();
+  }
+}
+function downloadTableExcelById(tableId, title, note=''){
+  const table = document.getElementById(tableId)?.closest('.tableWrap')?.querySelector('table');
+  if(!table) return;
+  const noteHtml = note ? `<div class="meta">${escapeHtml(note)}</div>` : '';
+  downloadHtmlAsExcel(`${title}_${today()}.xls`, createExcelHtml(title, `${noteHtml}${table.outerHTML}`));
+}
+async function downloadTablePDFById(tableId, title, note=''){
+  const tableWrap = document.getElementById(tableId)?.closest('.tableWrap');
+  if(!tableWrap) return;
+  const holder = document.createElement('div');
+  holder.className = 'previewWrap';
+  holder.innerHTML = `<div class="printForm"><h2>${escapeHtml(title)}</h2>${note?`<div class="meta">${escapeHtml(note)}</div>`:''}${tableWrap.querySelector('table').outerHTML}</div>`;
+  if(window.html2pdf){
+    const wrap = document.createElement('div');
+    wrap.className = 'printSheet';
+    wrap.appendChild(holder);
+    const opt = { margin:[10,10,10,10], filename:`${title}_${today()}.pdf`, image:{type:'jpeg', quality:0.98}, html2canvas:{scale:2, useCORS:true}, jsPDF:{unit:'mm', format:'a4', orientation:'portrait'}, pagebreak:{mode:['css','legacy']} };
+    await window.html2pdf().set(opt).from(wrap).save();
+  } else {
+    $('printArea').innerHTML = `<div class="printSheet">${holder.outerHTML}</div>`;
+    window.print();
+    setTimeout(()=>$('printArea').innerHTML='',700);
+  }
+}
 function previewCurrentCase(){
   if(!validateCase()) return;
   const temp = getFormData();
@@ -1576,46 +1642,31 @@ function previewCurrentCase(){
 }
 
 
-function receiptCsvText(){
-  const head=['사안번호','신고접수 일시','사고자(연락처) 또는 신고기관','신고내용','접수 사실 통보 피해관련 학생/보호자','접수 사실 통보 가해관련 학생/보호자','가해관련 학생과 피해관련 학생 분리','작성자(책임교사)'];
-  const rows=[...appState.cases].sort((a,b)=>(a.caseNo||'').localeCompare(b.caseNo||'')).map(c=>[c.caseNo,dotDateTime(c.recvAt),reportIdentityText(c),c.summary,c.victimNotify,c.perpNotify,formatSeparationDisplay(c),c.teacher||appState.settings.teacher]);
-  return [head,...rows].map(r=>r.map(csvEscape).join(',')).join('\n');
+function statsRows(){
+  const rows = [['월','건수']];
+  const monthCount=Array.from({length:12},()=>0);
+  appState.cases.forEach(c=>{ const m = c.recvAt?Number(c.recvAt.slice(5,7))-1:null; if(m>=0) monthCount[m]++; });
+  monthCount.forEach((n,i)=>rows.push([`${i+1}월`, n]));
+  return rows;
 }
-function investigatorCsvText(){
-  const head=['사안번호','자료명','사본 제공일','사본 제공자','조사관명','자료 폐기일','폐기자'];
-  const rows=appState.cases.filter(c=>c.useInvestigator || c.investigatorName || c.investigationDate || c.closedDate).map(c=>[
-    c.caseNo,c.evidence || '학생작성확인서 및 각종 증거자료 일체',dotDate(c.investigationDate || c.recvAt),c.teacher||appState.settings.teacher,c.investigatorName ? `조사관 ${c.investigatorName}` : '',dotDate(c.closedDate),c.closedDate ? `${c.teacher || appState.settings.teacher}${c.investigatorName ? ' / 조사관 ' + c.investigatorName : ''}` : ''
-  ]);
-  return [head,...rows].map(r=>r.map(csvEscape).join(',')).join('\n');
+function rowsToHtmlTable(rows){
+  if(!rows.length) return '<table><tr><td>데이터 없음</td></tr></table>';
+  const [head, ...body] = rows;
+  return `<table><thead><tr>${head.map(v=>`<th>${escapeHtml(v)}</th>`).join('')}</tr></thead><tbody>${body.map(r=>`<tr>${r.map(v=>`<td>${escapeHtml(v ?? '')}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
 }
-function actionMgmtCsvText(){
-  const head=['학년','반','번호','성명','조치일자','졸업예정일(월)','학교폭력 조치사항(기재유보 조치 포함)','전담기구 심의 사항','삭제 시기(월)'];
-  const rows=[];
-  appState.cases.forEach(c=>{ (c.perps||[]).forEach(p=>rows.push([p.grade,p.classNum,p.studentNum,p.name,dotDate(c.actionDate),c.graduationMonth,c.actionCode ? `${c.actionCode}${c.actionContent ? ' / ' + c.actionContent : ''}` : '',c.committeeReviewNote,c.deleteMonth])); });
-  return [head,...rows].map(r=>r.map(csvEscape).join(',')).join('\n');
-}
-function deferCsvText(){
-  const head=['학년','반','번호','성명','조치일자(이행기간)','조치사항','이행 완료일','비고'];
-  const rows=[];
-  appState.cases.forEach(c=>{
-    if(!/1호|2호|3호/.test(String(c.actionCode||''))) return;
-    (c.perps||[]).forEach(p=>rows.push([p.grade,p.classNum,p.studentNum,p.name,[dotDate(c.actionDate), c.actionPeriod ? `(${c.actionPeriod})` : ''].filter(Boolean).join(' '),c.actionCode,dotDate(c.completionDate),c.memo || c.committeeReviewNote]));
-  });
-  return [head,...rows].map(r=>r.map(csvEscape).join(',')).join('\n');
-}
-function statsCsvText(){
-  const head=['월','건수']; const monthCount=Array.from({length:12},()=>0); appState.cases.forEach(c=>{ const m = c.recvAt?Number(c.recvAt.slice(5,7))-1:null; if(m>=0) monthCount[m]++; });
-  return [head,...monthCount.map((n,i)=>[`${i+1}월`,n])].map(r=>r.map(csvEscape).join(',')).join('\n');
-}
-function downloadReceiptCSV(){downloadBlob(`서식3_학교폭력신고접수대장_${today()}.csv`, '\ufeff'+receiptCsvText(), 'text/csv;charset=utf-8')}
-function downloadInvestigatorCSV(){downloadBlob(`서식13_전담조사관자료관리대장_${today()}.csv`, '\ufeff'+investigatorCsvText(), 'text/csv;charset=utf-8')}
-function downloadActionMgmtCSV(){downloadBlob(`서식27_가해관련학생조치사항관리대장_${today()}.csv`, '\ufeff'+actionMgmtCsvText(), 'text/csv;charset=utf-8')}
-function downloadDeferCSV(){downloadBlob(`서식28_조건부기재유보기록_${today()}.csv`, '\ufeff'+deferCsvText(), 'text/csv;charset=utf-8')}
-function downloadStatsCSV(){downloadBlob(`통계현황_${today()}.csv`, '\ufeff'+statsCsvText(), 'text/csv;charset=utf-8')}
+function downloadReceiptExcel(){ downloadTableExcelById('receiptLedgerBody','서식3_학교폭력신고접수대장', `(${appState.settings.school || ''})학교`); }
+function downloadInvestigatorExcel(){ downloadTableExcelById('investigatorLedgerBody','서식13_전담조사관자료관리대장', `(${appState.settings.school || ''})학교`); }
+function downloadActionMgmtExcel(){ downloadTableExcelById('actionMgmtLedgerBody','서식27_가해관련학생조치사항관리대장', '[서식27]'); }
+function downloadDeferExcel(){ downloadTableExcelById('deferLedgerBody','서식28_조건부기재유보기록', '[서식28]'); }
+function downloadStatsExcel(){ downloadHtmlAsExcel(`통계현황_${today()}.xls`, createExcelHtml('통계 현황', rowsToHtmlTable(statsRows()))); }
+function downloadReceiptPDF(){ downloadTablePDFById('receiptLedgerBody','서식3_학교폭력신고접수대장', `(${appState.settings.school || ''})학교`); }
+function downloadInvestigatorPDF(){ downloadTablePDFById('investigatorLedgerBody','서식13_전담조사관자료관리대장', `(${appState.settings.school || ''})학교`); }
+function downloadActionMgmtPDF(){ downloadTablePDFById('actionMgmtLedgerBody','서식27_가해관련학생조치사항관리대장', '[서식27]'); }
+function downloadDeferPDF(){ downloadTablePDFById('deferLedgerBody','서식28_조건부기재유보기록', '[서식28]'); }
 function printTableById(title, tableId, note=''){
   const table = document.getElementById(tableId)?.closest('.tableWrap');
   if(!table) return;
-  $('printArea').innerHTML = `<div class="previewWrap"><div class="printForm"><h2>${escapeHtml(title)}</h2>${note?`<div class="meta">${escapeHtml(note)}</div>`:''}${table.outerHTML}</div></div>`;
+  $('printArea').innerHTML = `<div class="printSheet"><div class="previewWrap"><div class="printForm"><h2>${escapeHtml(title)}</h2>${note?`<div class="meta">${escapeHtml(note)}</div>`:''}${table.outerHTML}</div></div></div>`;
   window.print(); setTimeout(()=>$('printArea').innerHTML='',700);
 }
 function printReceiptLedger(){ printTableById('학교폭력 신고 접수 대장', 'receiptLedgerBody', `[서식3] (${appState.settings.school || ''})학교`); }
@@ -1684,18 +1735,19 @@ window.addEventListener('beforeunload', ()=>{ try{saveDraftSilently(); persistCo
 // exposed aliases expected by UI
 window.exportData = exportBackup;
 window.importData = importBackup;
-window.exportLedgerCSV = downloadReceiptCSV;
-window.exportActionLedgerCSV = downloadActionMgmtCSV;
-window.exportStatsCSV = downloadStatsCSV;
+window.exportLedgerExcel = downloadReceiptExcel;
+window.exportActionLedgerExcel = downloadActionMgmtExcel;
+window.exportStatsExcel = downloadStatsExcel;
 window.printLedger = printReceiptLedger;
-window.downloadInvestigatorCSV = downloadInvestigatorCSV;
-window.downloadActionMgmtCSV = downloadActionMgmtCSV;
-window.downloadDeferCSV = downloadDeferCSV;
+window.downloadInvestigatorExcel = downloadInvestigatorExcel;
+window.downloadActionMgmtExcel = downloadActionMgmtExcel;
+window.downloadDeferExcel = downloadDeferExcel;
 window.printInvestigatorLedger = printInvestigatorLedger;
 window.printActionMgmtLedger = printActionMgmtLedger;
 window.printDeferLedger = printDeferLedger;
 window.printForm = printCurrent;
-window.downloadFormTxt = downloadCurrentText;
+window.downloadFormPdf = downloadCurrentPDF;
+window.downloadFormExcel = downloadCurrentExcel;
 window.renderFormPreview = renderFormPreview;
 
 
