@@ -161,6 +161,7 @@
   .printSheet .formTable{table-layout:fixed}
   .printSheet .formTable th,.printSheet .formTable td{word-break:break-word}
   .printSheet .formTable tr,.printSheet .formTable td,.printSheet .formTable th{page-break-inside:avoid}
+  .avoidBreak,.formBlock,.previewWrap,.printForm{break-inside:avoid-page;page-break-inside:avoid}
   .printOnlyNote{display:none}
   @media print{
     @page{size:A4; margin:12mm}
@@ -169,9 +170,9 @@
     #printArea{display:block!important;position:fixed;inset:0;background:#fff;padding:0;overflow:visible}
     #printArea .previewWrap{border:none!important;box-shadow:none!important;border-radius:0!important;padding:0!important;max-width:none!important}
     #printArea .printForm{font-size:11.4px;line-height:1.4}
-    #printArea .formTable{page-break-inside:auto}
+    #printArea .formTable{page-break-inside:auto; break-inside:auto}
     #printArea .formTable thead{display:table-header-group}
-    #printArea .formTable tr,#printArea .formTable td,#printArea .formTable th{page-break-inside:avoid}
+    #printArea .formTable tr,#printArea .formTable td,#printArea .formTable th{page-break-inside:avoid;break-inside:avoid-page}
     #printArea .printSheet{width:auto;margin:0;page-break-after:auto}
     .noPrint{display:none!important}
     .printOnlyNote{display:block!important}
@@ -1336,249 +1337,329 @@ function buildForm(c, type){
   const victim = firstVictim(c);
   const perp = firstPerp(c);
   const currentDate = dotDate(new Date().toISOString());
+  const emergencyItems = Array.isArray(c.emergencyMeasures) ? c.emergencyMeasures : [];
 
-  const head = (title, topRef='') => `<div class="previewWrap"><div class="printForm" id="currentPrintable">${topRef ? `<div class="meta">${escapeHtml(topRef)}</div>` : ''}<h2>${escapeHtml(title)}</h2>`;
+  const head = (title, topRef='') => `<div class="previewWrap"><div class="printForm printSheet" id="currentPrintable">${topRef ? `<div class="meta">${escapeHtml(topRef)}</div>` : ''}<h2>${escapeHtml(title)}</h2>`;
   const tail = `</div></div>`;
+  const mark = cond => cond ? '■' : '□';
+  const line = len => `<span class="signLine" style="width:${len || 120}px"></span>`;
+  const wrapBlock = html => `<div class="formBlock avoidBreak">${html}</div>`;
+  const personNameList = arr => (arr||[]).map(v=>v.name).filter(Boolean).join(', ');
+  const victimNames = personNameList(c.victims);
+  const perpNames = personNameList(c.perps);
+  const checkboxList = (options, selected)=>options.map(v=>`${mark(String(selected||'').includes(v))}${escapeHtml(v)}`).join('  ');
+  const schoolCaseRef = `* 사안번호: ${(school || '')} ${escapeHtml(c.caseNo || '')}`;
+  const joinedSummary = [c.summary, c.damage, c.evidence].filter(Boolean).join('\n\n');
+  const emergencyRows = emergencyItems.length ? emergencyItems.map((m)=>{
+    const target = m.kind === '피해(관련)학생 보호조치' ? '피해관련학생' : '가해관련학생';
+    const actionLabel = m.kind === '피해(관련)학생 보호조치'
+      ? (m.victimAction || '')
+      : [m.offenderBasis, m.offenderAction].filter(Boolean).join(' / ');
+    const resultLabel = m.offenderReviewResult ? `<br>${escapeHtml(m.offenderReviewResult)}` : '';
+    return `<tr>
+      <td>${escapeHtml(target)}</td>
+      <td>${blankCell(m.name)}</td>
+      <td>${blankCell(m.gender || '')}</td>
+      <td>${blankCell(dotDate(c.recvAt))}</td>
+      <td style="white-space:pre-wrap">${blankCell(actionLabel)}${resultLabel}</td>
+    </tr>`;
+  }).join('') : `<tr><td colspan="5" style="text-align:center">해당 없음</td></tr>`;
 
   const forms = {
-    form11: `${head('학교폭력 신고 접수 대장','[서식3]  학교폭력 신고 접수 대장')}<div class="meta">[참고] 사안번호는 모든 관련 서류에 동일하게 작성</div>${ledgerForm11Table()}<div class="meta" style="margin-top:8px">* (${escapeHtml(school)})학교</div>${tail}`,
+    form11: `${head('학교폭력 신고 접수 대장','[서식3] 학교폭력 신고 접수 대장')}`
+      + wrapBlock(`<div class="meta">(${escapeHtml(school)})학교</div>${ledgerForm11Table()}`)
+      + `<div class="meta" style="margin-top:8px">신고 접수 대장은 수기 결재 원칙이며, 학년도 단위로 관리합니다.</div>${tail}`,
 
-    form12: `${head('가해관련 학생과 피해관련 학생 분리 의사 확인서','[서식6]  가해관련 학생과 피해관련 학생 분리 의사 확인서')}
-      <div class="meta">${escapeHtml(caseRef(c, school))}</div>
-      <div style="margin:10px 0 14px">아래 내용을 확인하여 해당 칸에 표시하여 주시기 바랍니다.</div>
-      <div style="margin-bottom:12px">「학교폭력예방법」 제16조 제1항에 따른 '가해관련 학생과 피해관련 학생 분리'를<br><br>${c.separation==='즉시분리 미시행' ? '□ 희망합니다. &nbsp;&nbsp;&nbsp; ■ 희망하지 않습니다.' : '■ 희망합니다. &nbsp;&nbsp;&nbsp; □ 희망하지 않습니다.'}</div>
-      <div style="margin:12px 0">학교장 귀중</div>
-      <div style="margin:16px 0">2026년&nbsp;&nbsp;&nbsp;&nbsp;월&nbsp;&nbsp;&nbsp;&nbsp;일</div>
-      <div style="margin:8px 0 16px">피해관련 학생: ${blankCell(victim.name)} <span class="signLine"></span></div>
-      <div style="font-size:12px;line-height:1.8;white-space:pre-wrap">1. 제도 도입 취지: 피해관련학생의 심리적 불안감 해소 및 2차 피해 방지, 고조된 학교폭력 갈등 상황 완화를 위해 동일 학교에서 발생한 학교폭력 발생 초기에 학교장이 학교폭력을 '인지'한 경우 가해자와 피해관련학생을 일시 분리합니다(법률 제16조 제1항).
-※ 사안조사 전 단계이므로, '가해자-피해관련학생'은 '가해 관련자-피해 관련 학생'의 의미입니다.
-2. '가해관련 학생과 피해관련 학생 분리'는 1일~7일 범위 내에 실시하되, 제16조 제1항 또는 제17조 제5항 및 제6항에 따라 긴급조치가 시행되어 가해자와 피해관련학생이 분리되면 종료됩니다.
-3. 관련 학생 쌍방이 서로 피해를 주장하며 분리를 요청하는 경우 양측의 의사를 모두 반영하여 상호 분리를 하여야 합니다.
-4. 분리를 희망하는 경우라 하더라도, 법률 제13조의2 제1항 각 호에 모두 해당하는 경우 분리하지 않을 수 있습니다.
-5. 가해자와 피해관련학생의 분리 기간 중에도 제16조 제1항 또는 제17조 제5항 및 제6항에 따라 긴급조치를 시행할 수 있습니다.
-6. 학교는 해당 기간 동안 관련 학생의 학습권 보장을 위해 학교 내 별도 공간 마련, 교육자료 제공, 원격 수업 등을 실시합니다.
-7. 학교 내 별도 공간 마련이 어려워 학교 외 장소를 이용한 경우 출석인정 결석으로 처리됩니다.</div>${tail}`,
+    form12: `${head('가해관련 학생과 피해관련 학생 분리 의사 확인서','[서식6] 가해관련 학생과 피해관련 학생 분리 의사 확인서')}`
+      + wrapBlock(`
+        <div class="meta">${escapeHtml(schoolCaseRef)}</div>
+        <div style="margin:10px 0 14px">아래 내용을 확인하여 해당 칸에 표시하여 주시기 바랍니다.</div>
+        <div style="margin-bottom:14px;line-height:1.8">「학교폭력예방법」제16조 제1항에 따른 ‘가해자와 피해학생 분리’를<br><br>${c.separation==='즉시분리 미시행' ? '□ 희망합니다.  ■ 희망하지 않습니다' : '■ 희망합니다.  □ 희망하지 않습니다'}</div>
+        <div style="font-size:12px;line-height:1.8;white-space:pre-wrap">○ 제도 도입 취지: 피해학생의 심리적 불안감 해소 및 2차 피해 방지, 고조된 학교폭력 갈등 상황 완화를 위해 동일 학교에서 발생한 학교폭력 발생 초기에 학교장이 학교폭력을 ‘인지’한 경우 가해자와 피해학생을 일시 분리합니다(법률 제16조 제1항).
+※ 사안 조사 전 단계이므로, 가해자-피해학생은 가해 추정-피해 추정학생의 의미입니다.
+○ ‘가해관련 학생과 피해관련 학생 분리’는 최대 7일 범위 내에 실시하되, 제16조제1항 또는 제17조제5항 및 제17조제6항에 따라 긴급조치가 시행되어 가해자와 피해학생이 분리되면 종료됩니다.
+○ 관련학생 쌍방이 서로 피해를 주장하며 분리를 요청하는 경우 양측의 의사를 모두 반영하여 상호분리를 하여야 합니다.
+○ 가해관련 학생과 피해관련 학생의 분리 기간 중에도 제16조 제1항 또는 제17조 제5항 및 제6항에 따라 긴급조치를 시행할 수 있습니다.
+○ 학교는 해당 기간 동안 관련학생의 학습권 보장을 위해 학교 내에 별도 공간을 마련하고 교육자료 제공, 원격 수업 등을 실시합니다.
+○ 학교 내에 별도 공간 마련이 어려워 가정 또는 기타 학교 외의 장소를 이용하여 분리조치를 시행한 경우, 분리 기간은 출석인정 결석으로 처리됩니다.</div>
+        <table class="formTable" style="margin-top:14px">
+          <tr><th>즉시분리 여부</th><td>${blankCell(formatSeparationDisplay(c))}</td></tr>
+          <tr><th>예외 사유</th><td>${blankCell(separationExceptionText(c))}</td></tr>
+        </table>
+        <div style="margin-top:20px">2026년 &nbsp;&nbsp; 월 &nbsp;&nbsp; 일</div>
+        <div style="margin-top:12px">피해관련 학생: ${blankCell(victim.name)} ${line(100)}</div>
+        <div style="margin-top:12px">${escapeHtml(school)}학교장 귀중</div>
+        <div class="printOnlyNote" style="font-size:11px;margin-top:10px">즉시분리 예외: 피해관련 학생 반대, 교육활동 중 아님, 이미 긴급선도조치로 분리됨, 타학교, 교외체험학습, 학교장 자체해결 가능요건 충족.</div>`)
+      + `${tail}`,
 
-    form13: `${head('학교폭력 사안접수 보고서','[서식10]  학교폭력 사안접수 보고서')}
-      <div class="meta">[참고] 학교폭력 접수 사안을 학교장 및 교육(지원)청에 보고(48시간 이내 보고) / 긴급하거나 중대 사안(성폭력 사안 등)은 유선으로 별도 보고</div>
-      <table class="formTable">
-        <tr><th>학교명</th><td>${blankCell(school)}</td><th>교감 성명</th><td>${blankCell(vicePrincipal)}</td><th>휴대전화</th><td>${blankCell(viceMobile)}</td></tr>
-        <tr><th>담당자(책임교사) 성명</th><td>${blankCell(teacher)}</td><th>휴대전화</th><td colspan="3">${blankCell(teacherMobile)}</td></tr>
-        <tr><th>접수 일시</th><td colspan="5">${blankCell(reportDateKorean(c.recvAt))}</td></tr>
-        <tr><th>신고자(성명, 신분)</th><td colspan="5">${blankCell(reportIdentityText(c))}</td></tr>
-        <tr><th>접수·인지경로</th><td colspan="5">${blankCell(c.reportType)}</td></tr>
-        <tr><th>사안 유형</th><td colspan="5">${blankCell(c.violenceType)}</td></tr>
-      </table>
-      <table class="formTable">
-        <tr><th>조사관 배정 요청</th><td>${c.useInvestigator ? '■ 조사관 배정 요청' : '□ 조사관 배정 요청'} &nbsp;&nbsp; ${c.useInvestigator ? '□ 학교 자체 조사' : '■ 학교 자체 조사'}</td></tr>
-        <tr><th>가해관련학생 제2호 조치 시행</th><td>${blankCell(c.mandatoryNo2 || '시행')}</td></tr>
-      </table>
-      <table class="formTable">
-        <tr><th rowspan="2">가해관련 학생과 피해관련 학생 분리여부</th><th>분리 시행 여부</th><th>가해관련 학생과 피해관련 학생 분리 예외 사유(√)</th></tr>
-        <tr><td>${c.separation==='즉시분리 시행' ? '■ 시행' : '□ 시행'} &nbsp;&nbsp; ${c.separation==='즉시분리 미시행' ? '■ 미시행' : '□ 미시행'}<br>${c.separation==='즉시분리 시행' ? `*분리기간: ${blankCell(c.sepPeriod)}${c.separationPlace ? `<br>*즉시분리 장소: ${blankCell(c.separationPlace)}` : ''}` : `*미시행 사유: ${blankCell(c.sepReason)}`}</td><td style="white-space:pre-wrap">${blankCell(separationExceptionText(c))}</td></tr>
-      </table>
-      <table class="formTable">
-        <tr><th>사실확인 내용</th><td style="white-space:pre-wrap">${blankCell(c.summary)}</td></tr>
-      </table>
-      <table class="formTable">
-        <tr><th>관련 학생</th><th>학교명</th><th>성명</th><th>학년/반/번호</th><th>성별</th><th>보호자 통보여부</th><th>비고</th></tr>
-        ${relatedRows(c).map(r=>`<tr><td>${escapeHtml(r.role)}</td><td>${blankCell(r.school)}</td><td>${blankCell(r.person.name)}</td><td>${blankCell(gradeClassText(r.person))}</td><td>${blankCell(r.person.gender)}</td><td>${blankCell(r.role.startsWith('피해') ? c.victimNotify : c.perpNotify)}</td><td>${blankCell(r.role)}${r.person.athlete==='V' ? ' / 학생선수' : ''}</td></tr>`).join('') || `<tr><td colspan="7" style="text-align:center">관련 학생 없음</td></tr>`}
-      </table>
-      <table class="formTable">
-        <tr><th>기타 사항(경찰신고, 고소, 소송 여부 등)</th><td>${blankCell(c.police)}</td></tr>
-        <tr><th>타학교 관련 여부</th><td>${blankCell(c.otherSchoolInfo)}</td></tr>
-        <tr><th>(전담조사관 배정 요청에 따른) 학생 조사 가능 시간</th><td>피해 관련 학생: ${blankCell(c.victimAvailable)}<br>가해 관련 학생: ${blankCell(c.perpAvailable)}</td></tr>
-        <tr><th>기타 요청 사항</th><td>${blankCell(c.investigatorMemo)}</td></tr>
-      </table>
-      <div class="meta" style="margin-top:8px">${escapeHtml(caseRef(c, school))}</div>${tail}`,
+    form13: `${head('학교폭력 사안접수 보고서','[서식10] 학교폭력 사안접수 보고서')}`
+      + wrapBlock(`
+        <div class="meta">${escapeHtml(schoolCaseRef)}</div>
+        <table class="formTable">
+          <tr><th>학교명</th><td>${blankCell(school)}</td><th>교감 성명</th><td>${blankCell(vicePrincipal)}</td><th>담당자 성명</th><td>${blankCell(teacher)}</td></tr>
+          <tr><th>교감 휴대전화</th><td>${blankCell(viceMobile)}</td><th>담당자 휴대전화</th><td colspan="3">${blankCell(teacherMobile)}</td></tr>
+          <tr><th>접수일시</th><td colspan="5">${blankCell(reportDateKorean(c.recvAt))}</td></tr>
+          <tr><th>신고자(성명, 신분)</th><td colspan="5">${blankCell(reportIdentityText(c))}</td></tr>
+          <tr><th>접수·인지 경로</th><td colspan="5">${blankCell(c.reportType)}</td></tr>
+          <tr><th>접수자·인지자</th><td colspan="5">${blankCell(teacher)}(학교폭력담당교사)</td></tr>
+        </table>
+        <table class="formTable">
+          <tr><th>조사관 배정 요청</th><td>${mark(!!c.useInvestigator)} 조사관 배정 요청 &nbsp;&nbsp; ${mark(!c.useInvestigator)} 학교 자체 조사</td></tr>
+          <tr><th>가해관련학생 제2호 조치 시행</th><td>${blankCell(c.mandatoryNo2 || '시행')}</td></tr>
+        </table>
+        <table class="formTable">
+          <tr><th rowspan="2">피․가해학생 즉시분리 여부 (※최대 7일 이내)</th><th>즉시분리 시행</th><th>미시행 사유</th></tr>
+          <tr>
+            <td>${c.separation==='즉시분리 시행' ? `분리기간: ${blankCell(c.sepPeriod)} / 장소: ${blankCell(c.separationPlace)}` : ''}</td>
+            <td style="white-space:pre-wrap">${c.separation==='즉시분리 미시행' ? blankCell(c.sepReason) : ''}</td>
+          </tr>
+        </table>
+        <table class="formTable">
+          <tr><th>관련학생</th><th>일시</th><th>장소</th><th>내용</th><th>유형</th></tr>
+          <tr><td>${escapeHtml([victimNames, perpNames].filter(Boolean).join(' / '))}</td><td>${blankCell(dotDate(c.incidentDate || c.recvAt))}</td><td>${blankCell(c.incidentPlace)}</td><td style="white-space:pre-wrap">${blankCell(c.summary)}</td><td>${checkboxList(['신체폭력','언어폭력','금품갈취','강요','따돌림','성폭력','사이버폭력','기타'], c.violenceType)}</td></tr>
+        </table>
+        <table class="formTable">
+          <tr><th>관련학생 학교명</th><th>학번</th><th>성명</th><th>성별</th><th>보호자 통보여부</th><th>관계회복 프로그램 안내여부</th><th>비고</th></tr>
+          ${relatedRows(c).map(r=>`<tr><td>${blankCell(r.school)}</td><td>${blankCell(gradeClassNo(r.person))}</td><td>${blankCell(r.person.name)}</td><td>${blankCell(r.person.gender)}</td><td>${blankCell(r.role.startsWith('피해') ? c.victimNotify : c.perpNotify)}</td><td>${mark(!!c.relationRecoveryUsed)} 안내</td><td>${blankCell(r.role)}</td></tr>`).join('') || `<tr><td colspan="7" style="text-align:center">관련 학생 없음</td></tr>`}
+        </table>
+        <table class="formTable">
+          <tr><th>기타 사항</th><td>${blankCell(c.police)}</td></tr>
+          <tr><th>타학교 관련 여부</th><td>${blankCell(c.otherSchoolInfo)}</td></tr>
+          <tr><th>전담조사관 면담조사 가능시간</th><td>피해 관련: ${blankCell(c.victimAvailable)}<br>가해 관련: ${blankCell(c.perpAvailable)}</td></tr>
+          <tr><th>관계회복 프로그램 관련 학생 의견</th><td>피해 관련: ${blankCell(c.relationRecoveryVictimOpinion || '')}<br>가해 관련: ${blankCell(c.relationRecoveryPerpOpinion || '')}</td></tr>
+        </table>`)
+      + `${tail}`,
 
-    form21: `${head('학생 작성 확인서','[서식4]  학생 작성 확인서')}
-      <div class="meta">(학교) 최초 학생 작성 □ &nbsp;&nbsp; (전담조사관) 추가 학생 작성 □</div>
-      <div class="meta">${escapeHtml(caseRef(c, school))}</div>
-      <table class="formTable">
-        <tr><th>성명</th><td>${blankCell(victim.name || perp.name)}</td><th>학년 / 반</th><td>${blankCell((victim.grade||perp.grade) ? `${victim.grade||perp.grade} / ${victim.classNum||perp.classNum}` : '')}</td></tr>
-        <tr><th>성별</th><td>${blankCell(victim.gender || perp.gender)}</td><th>연락처</th><td>학생 / 보호자</td></tr>
-        <tr><th>관련 학생 사안 내용</th><td colspan="3" style="white-space:pre-wrap">${blankCell(c.summary)}</td></tr>
-        <tr><th>필요한 도움</th><td colspan="3">${blankCell(c.damage || c.initialActions)}</td></tr>
-        <tr><th>작성일</th><td colspan="3">${currentDate}</td></tr>
-      </table>${tail}`,
+    form21: `${head('학생 작성 확인서','[서식4] (최초□, 추가□) 학생 작성 확인서')}`
+      + wrapBlock(`
+        <div class="meta">${escapeHtml(schoolCaseRef)} &nbsp;&nbsp; (학교) 최초 학생 작성${mark(!c.useInvestigator)} &nbsp; (전담조사관) 최초 학생 작성${mark(!!c.useInvestigator)}</div>
+        <table class="formTable">
+          <tr><th>학생 학년/반/번호</th><td>${blankCell(gradeClassNo(victim) || gradeClassNo(perp))}</td><th>이름</th><td>${blankCell(victim.name || perp.name)}</td><th>연락처</th><td>${blankCell(victim.phone || perp.phone)}</td></tr>
+          <tr><th>학생선수</th><td colspan="5">${mark(victim.athlete==='V' || perp.athlete==='V')} 학생선수 &nbsp;&nbsp; ${mark(!(victim.athlete==='V' || perp.athlete==='V'))} 해당없음</td></tr>
+          <tr><th>보호자</th><td>${blankCell(victim.guardian || perp.guardian)}</td><th>학생과의 관계</th><td>${blankCell(victim.relation || perp.relation)}</td><th>연락처</th><td>${blankCell(victim.phone || perp.phone)}</td></tr>
+          <tr><th>관련학생 일시</th><td>${blankCell(dotDate(c.incidentDate || c.recvAt))}</td><th>지속 기간</th><td></td><th>지속 횟수</th><td></td></tr>
+          <tr><th>장소</th><td colspan="5">${blankCell(c.incidentPlace)}</td></tr>
+          <tr><th>유형</th><td colspan="5">${checkboxList(['폭행','언어폭력','따돌림','강요','사이버폭력','금품갈취','성폭력','기타'], c.violenceType)}</td></tr>
+          <tr><th>사안내용</th><td colspan="5" style="white-space:pre-wrap">${blankCell(c.summary)}</td></tr>
+          <tr><th>그 외에 필요한 도움</th><td colspan="5" style="white-space:pre-wrap">${blankCell(c.damage)}</td></tr>
+          <tr><th>작성일</th><td colspan="5">${blankCell(currentDate)} &nbsp;&nbsp; 작성자 ${line(120)}</td></tr>
+        </table>`)
+      + `${tail}`,
 
-    form22: `${head('보호자 확인서','[서식5]  보호자 확인서')}
-      <div class="meta">${escapeHtml(caseRef(c, school))}</div>
-      <table class="formTable">
-        <tr><th>학생 성명</th><td>${blankCell(victim.name || perp.name)}</td><th>학년 / 반</th><td>${blankCell((victim.grade||perp.grade) ? `${victim.grade||perp.grade} / ${victim.classNum||perp.classNum}` : '')}</td></tr>
-        <tr><th>성별</th><td>${blankCell(victim.gender || perp.gender)}</td><th>사안 인지 경위</th><td>${blankCell(c.reportType)}</td></tr>
-        <tr><th>현재 자녀의 상태</th><td colspan="3">${blankCell(c.damage)}</td></tr>
-        <tr><th>자녀 확인 내용</th><td colspan="3">${blankCell(c.summary)}</td></tr>
-        <tr><th>현재까지의 보호자 조치</th><td colspan="3">${blankCell(c.initialActions)}</td></tr>
-        <tr><th>본 사안 해결을 위한 보호자 의견, 바라는 점</th><td colspan="3">${blankCell(c.memo)}</td></tr>
-        <tr><th>관계회복 프로그램 참여 의사</th><td colspan="3">관계회복 프로그램 참여에 동의합니다.(√ 표시) □</td></tr>
-        <tr><th>학교폭력 사안처리 절차 안내 여부</th><td colspan="3">학교폭력 사안처리 절차 안내를 받았습니다. (√ 표시) □</td></tr>
-      </table>${tail}`,
+    form22: `${head('보호자 확인서','[서식5] 보호자 확인서')}`
+      + wrapBlock(`
+        <div class="meta">${escapeHtml(schoolCaseRef)}</div>
+        <table class="formTable">
+          <tr><th>학년/반/번호</th><td>${blankCell(gradeClassNo(victim) || gradeClassNo(perp))}</td><th>학생 성명</th><td>${blankCell(victim.name || perp.name)}</td><th>학생과의 관계</th><td>${blankCell(victim.relation || perp.relation)}</td></tr>
+          <tr><th>보호자 성명</th><td>${blankCell(victim.guardian || perp.guardian)}</td><th>보호자 연락처</th><td>${blankCell(victim.phone || perp.phone)}</td><th>자녀 학생선수 여부</th><td>${mark(victim.athlete==='V' || perp.athlete==='V')} 학생선수  ${mark(!(victim.athlete==='V' || perp.athlete==='V'))} 해당없음</td></tr>
+          <tr><th>보호자 주소</th><td colspan="5">${blankCell(victim.address || perp.address)}</td></tr>
+          <tr><th>안내서류 수신방법</th><td colspan="5">${mark(true)} 등기우편 &nbsp;&nbsp; ${mark(false)} 전자우편 (E-mail주소: )</td></tr>
+          <tr><th>사안 인지 경위</th><td colspan="5">${blankCell(c.reportType)}</td></tr>
+          <tr><th>현재 학생의 상태</th><td colspan="5">${blankCell(c.damage)}</td></tr>
+          <tr><th>교우 관계</th><td colspan="5"></td></tr>
+          <tr><th>학교폭력 경험 유무 및 내용</th><td colspan="5"></td></tr>
+          <tr><th>학교폭력 사안 인지 내용</th><td colspan="5" style="white-space:pre-wrap">${blankCell(c.summary)}</td></tr>
+          <tr><th>현재까지의 보호자 조치</th><td colspan="5" style="white-space:pre-wrap">${blankCell(c.initialActions)}</td></tr>
+          <tr><th>사안 해결을 위한 관련 정보 제공</th><td colspan="5"></td></tr>
+          <tr><th>현재 보호자의 심정</th><td colspan="5"></td></tr>
+          <tr><th>본 사안 해결을 위한 보호자 의견, 바라는 점</th><td colspan="5" style="white-space:pre-wrap">${blankCell(c.memo)}</td></tr>
+          <tr><th>작성일</th><td colspan="5">${blankCell(currentDate)} &nbsp;&nbsp; 작성자 보호자 친필 서명 ${line(120)}</td></tr>
+        </table>`)
+      + `${tail}`,
 
-    form23: `${head('(피해·가해관련 학생) 긴급조치 보고서','[서식8]  (피해·가해관련 학생) 긴급조치 보고서')}
-      <div class="meta">[참고] 피해관련학생 긴급 보호조치는 법률 제16조제1항에 의거 즉시 심의위원회에 보고 / 가해관련학생 긴급 선도조치는 법률 제17조제5항 및 제6항에 의거 즉시 심의위원회에 보고 및 추인</div>
-      <div class="meta">${escapeHtml(caseRef(c, school))}</div>
-      <table class="formTable">
-        <tr><th>대상학생</th><td>${blankCell(joinRoleNames(c.victims) || joinRoleNames(c.perps))}</td><th>학년 / 반</th><td>${blankCell(gradeClassText(victim) || gradeClassText(perp))}</td></tr>
-        <tr><th>사안 개요(조치원인)</th><td colspan="3" style="white-space:pre-wrap">${blankCell(c.summary)}</td></tr>
-        <tr><th>조치 내용</th><td colspan="3">${blankCell(c.initialActions || c.separation)}</td></tr>
-        <tr><th>피해관련학생 조치 사항</th><td>${blankCell(c.separation)}</td><th>법적 근거</th><td>「학교폭력 예방 및 대책에 관한 법률」 제16조제1항</td></tr>
-        <tr><th>가해관련학생 조치 사항</th><td>${blankCell(c.actionCode)}</td><th>법적 근거</th><td>「학교폭력 예방 및 대책에 관한 법률」 제17조제5항 / 제17조제6항</td></tr>
-        <tr><th>조치일자</th><td>${blankCell(dotDate(c.actionDate || c.recvAt))}</td><th>관련 학생 및 보호자 통지</th><td>${blankCell(c.victimNotify || c.perpNotify)}</td></tr>
-        <tr><th>긴급 조치의 필요성</th><td colspan="3">${blankCell(c.damage || c.summary)}</td></tr>
-      </table>${tail}`,
+    form23: `${head('(피해·가해관련 학생) 긴급조치 보고서','[서식8] (피해·가해관련 학생) 긴급조치 보고서')}`
+      + wrapBlock(`
+        <div class="meta">${escapeHtml(schoolCaseRef)}</div>
+        <table class="formTable">
+          <tr><th>조치 필요성</th><td>${checkboxList(['2명 이상의 학생이 고의적·지속적 폭력 행사','전치 2주 이상의 상해','접수·진술을 방해','접수 등에 대한 보복 행위','그 외 피해학생의 긴급한 보호 필요','피해학생 측의 요청'], c.damage + ' ' + c.memo + ' ' + c.summary)}</td></tr>
+          <tr><th>사안 개요</th><td style="white-space:pre-wrap">${blankCell(c.summary)}</td></tr>
+        </table>
+        <table class="formTable">
+          <tr><th>구분</th><th>성명</th><th>성별</th><th>긴급조치 일자</th><th>긴급 조치 사항(기간)</th></tr>
+          ${emergencyRows}
+        </table>
+        <table class="formTable">
+          <tr><th>긴급조치의 필요성</th><td style="white-space:pre-wrap">${blankCell(c.damage || c.summary)}</td></tr>
+          <tr><th>관련학생 또는 보호자 의견청취 여부</th><td style="white-space:pre-wrap">① 의견청취 완료 (일시: ${blankCell(dotDate(c.recvAt))}, 방법: 유선/면담) ② 의견을 들으려 하였으나 이에 따르지 않음</td></tr>
+          <tr><th>관련학생 및 보호자 통지</th><td style="white-space:pre-wrap">피해관련학생/보호자: ${blankCell(c.victimNotify)}
+가해관련학생/보호자: ${blankCell(c.perpNotify)}</td></tr>
+        </table>
+        <div style="margin-top:18px;text-align:right">${escapeHtml(school)}학교장 (인)</div>`)
+      + `${tail}`,
 
-    form24: `${head('학교폭력 사안조사 보고서','[서식12]  학교폭력 사안조사 보고서')}
-      <div class="meta">(1차 조사□ / 보완조사□)</div>
-      <div class="meta">${escapeHtml(caseRef(c, school))}</div>
-      <table class="formTable">
-        <tr><th>신고접수 일자</th><td>${blankCell(dotDate(c.recvAt))}</td><th>작성자</th><td>책임교사 ${blankCell(teacher)} ${teacherMobile ? `(${escapeHtml(teacherMobile)})` : ''}</td></tr>
-        <tr><th>사안조사 일자</th><td>${blankCell(dotDate(c.investigationDate))}</td><th>조사관</th><td>${blankCell(c.investigatorName)} ${c.investigatorName && c.investigatorOrg ? '('+escapeHtml(c.investigatorOrg)+')' : ''}</td></tr>
-        <tr><th>사안 유형</th><td colspan="3">유형: ${blankCell(c.violenceType)}</td></tr>
-      </table>
-      <table class="formTable">
-        <tr><th>학교</th><th>학년 반/번호</th><th>성명</th><th>성별</th><th>(공동사안인 경우) 관련학교의 사안 번호</th><th>학생선수 여부</th><th>비고</th></tr>
-        ${relatedRows(c).map(r=>`<tr><td>${blankCell(r.school)}</td><td>${blankCell(gradeClassNo(r.person))}</td><td>${blankCell(r.person.name)}</td><td>${blankCell(r.person.gender)}</td><td>${blankCell('')}</td><td>${blankCell(r.role.startsWith('가해') ? r.person.athlete : '')}</td><td>${blankCell(r.role)}</td></tr>`).join('') || `<tr><td colspan="7" style="text-align:center">관련 학생 없음</td></tr>`}
-      </table>
-      <table class="formTable">
-        <tr><th>사안 개요(주요 내용)</th><td style="white-space:pre-wrap">${blankCell(c.summary)}</td></tr>
-        <tr><th>사안 경위(세부내용 전체)</th><td style="white-space:pre-wrap">${blankCell([c.summary, c.damage, c.evidence].filter(Boolean).join('\n\n'))}</td></tr>
-      </table>
-      <table class="formTable">
-        <tr><th rowspan="2">가해자와 피해관련학생의 분리 여부</th><th>분리 시행 여부</th><th>가해관련 학생과 피해관련 학생 분리 예외(√)</th></tr>
-        <tr><td>${c.separation==='즉시분리 시행' ? '■ 시행' : '□ 시행'} &nbsp;&nbsp; ${c.separation==='즉시분리 미시행' ? '■ 미시행' : '□ 미시행'}<br>${c.separation==='즉시분리 시행' ? `*분리기간: ${blankCell(c.sepPeriod)}${c.separationPlace ? `<br>*즉시분리 장소: ${blankCell(c.separationPlace)}` : ''}` : `*미시행 사유: ${blankCell(c.sepReason)}`}</td><td style="white-space:pre-wrap">${blankCell(separationExceptionText(c))}</td></tr>
-      </table>
-      <table class="formTable">
-        <tr><th>자체해결 요건 충족 여부(조사관 조사시)</th><td>${blankCell(selfResolveOpinion(c))}</td></tr>
-        <tr><th>자체해결 동의 여부</th><td>${blankCell(c.parentAgree)}</td></tr>
-        <tr><th>학교장 자체해결 요건 의견(충족 여부)</th><td style="white-space:pre-wrap">${blankCell(selfResolveChecklistText())}\n\n${blankCell(c.selfResolve)}</td></tr>
-      </table>
-      <table class="formTable">
-        <tr><th>쟁점 사안 / 근거자료</th><td style="white-space:pre-wrap">주요 쟁점 1.\n${blankCell(c.memo)}\n\n근거자료\n${blankCell(c.evidence)}</td></tr>
-        <tr><th>피해(관련)학생의 주장 내용</th><td style="white-space:pre-wrap">${blankCell(c.summary)}</td></tr>
-        <tr><th>가해(관련)학생의 주장 내용</th><td style="white-space:pre-wrap">${blankCell(c.memo)}</td></tr>
-        <tr><th>목격학생의 진술 등</th><td style="white-space:pre-wrap">${blankCell(c.evidence)}</td></tr>
-      </table>${tail}`,
+    form24: `${head('학교폭력 사안조사 보고서','[서식12] 학교폭력 사안조사 보고서')}`
+      + wrapBlock(`
+        <div class="meta">(1차 조사□ / 보완조사□) &nbsp;&nbsp; ${escapeHtml(schoolCaseRef)}</div>
+        <table class="formTable">
+          <tr><th>신고접수 일자</th><td>${blankCell(dotDate(c.recvAt))}</td><th>책임교사 성명&연락처</th><td>${blankCell(teacher)} ${blankCell(teacherMobile)}</td></tr>
+          <tr><th>사안조사 일자</th><td>${blankCell(dotDate(c.investigationDate || c.recvAt))}</td><th>조사관 성명&연락처</th><td>${blankCell(c.investigatorName)} ${blankCell(c.investigatorOrg)}</td></tr>
+          <tr><th>사안 유형</th><td colspan="3">유형: ${blankCell(c.violenceType)}</td></tr>
+        </table>
+        <table class="formTable">
+          <tr><th>학교</th><th>학년 반/번호</th><th>성명</th><th>성별</th><th>(공동사안인 경우) 관련학교의 사안 번호</th><th>학생선수 여부</th><th>비고</th></tr>
+          ${relatedRows(c).map(r=>`<tr><td>${blankCell(r.school)}</td><td>${blankCell(gradeClassNo(r.person))}</td><td>${blankCell(r.person.name)}</td><td>${blankCell(r.person.gender)}</td><td></td><td>${blankCell(r.person.athlete==='V' && r.role.startsWith('가해') ? 'V' : '')}</td><td>${blankCell(r.role)}</td></tr>`).join('') || `<tr><td colspan="7" style="text-align:center">관련 학생 없음</td></tr>`}
+        </table>
+        <table class="formTable">
+          <tr><th>사안 개요(주요 내용)</th><td style="white-space:pre-wrap">${blankCell(c.summary)}</td></tr>
+          <tr><th>사안 경위(세부내용 전체)</th><td style="white-space:pre-wrap">${blankCell(joinedSummary)}</td></tr>
+        </table>
+        <table class="formTable">
+          <tr><th rowspan="2">가해자와 피해학생의 분리 여부</th><th>분리 시행 여부</th><th>가해자와 피해학생 분리 예외 (√표시)</th></tr>
+          <tr><td>${c.separation==='즉시분리 시행' ? `시행 / 분리기간 ${blankCell(c.sepPeriod)}` : '미시행'}</td><td>${blankCell(separationExceptionText(c))}</td></tr>
+        </table>
+        <table class="formTable">
+          <tr><th>자체해결 요건 충족 여부(조사관 조사시)</th><td>${blankCell(selfResolveOpinion(c))}</td></tr>
+          <tr><th>학교장 자체해결 요건 의견(충족 여부)</th><td style="white-space:pre-wrap">${blankCell(selfResolveChecklistText())}</td></tr>
+        </table>
+        <table class="formTable">
+          <tr><th>쟁점 사안</th><td style="white-space:pre-wrap">${blankCell(c.memo)}</td></tr>
+          <tr><th>근거자료</th><td style="white-space:pre-wrap">${blankCell(c.evidence)}</td></tr>
+          <tr><th>피해(관련)학생의 주장 내용</th><td style="white-space:pre-wrap">${blankCell(c.summary)}</td></tr>
+          <tr><th>가해(관련)학생의 주장 내용</th><td style="white-space:pre-wrap">${blankCell(c.perpStatement || '')}</td></tr>
+          <tr><th>목격학생의 진술 등</th><td style="white-space:pre-wrap">${blankCell(c.witnessStatement || '')}</td></tr>
+        </table>
+        <table class="formTable">
+          <tr><th>긴급조치 여부</th><td style="white-space:pre-wrap">${blankCell(formatEmergencyMeasures(emergencyItems))}</td></tr>
+          <tr><th>특이사항 및 고려사항</th><td style="white-space:pre-wrap">${blankCell(c.committeeReviewNote || c.memo)}</td></tr>
+        </table>`)
+      + `${tail}`,
 
-    form25: `${head('피해·가해관련 학생 보호자 개인정보 정리표','[보조서식]  피해·가해관련 학생 보호자 개인정보 정리표')}
-      <div class="meta">${escapeHtml(caseRef(c, school))}</div>
-      <table class="formTable">
-        <tr><th>구분</th><th>학생</th><th>보호자명</th><th>관계</th><th>휴대폰번호</th><th>주소</th></tr>
-        ${(c.victims||[]).map(v=>`<tr><td>피해(관련)</td><td>${blankCell(v.name)}</td><td>${blankCell(v.guardian)}</td><td>${blankCell(v.relation)}</td><td>${blankCell(v.phone)}</td><td>${blankCell(v.address)}</td></tr>`).join('')}
-        ${(c.perps||[]).map(v=>`<tr><td>가해(관련)</td><td>${blankCell(v.name)}</td><td>${blankCell(v.guardian)}</td><td>${blankCell(v.relation)}</td><td>${blankCell(v.phone)}</td><td>${blankCell(v.address)}</td></tr>`).join('')}
-      </table>${tail}`,
+    form25: `${head('피해·가해관련 학생 보호자 개인정보 정리표','[보조서식] 피해·가해관련 학생 보호자 개인정보 정리표')}`
+      + wrapBlock(`<div class="meta">${escapeHtml(schoolCaseRef)}</div><table class="formTable"><tr><th>구분</th><th>학생</th><th>보호자명</th><th>관계</th><th>휴대폰번호</th><th>주소</th></tr>${(c.victims||[]).map(v=>`<tr><td>피해(관련)</td><td>${blankCell(v.name)}</td><td>${blankCell(v.guardian)}</td><td>${blankCell(v.relation)}</td><td>${blankCell(v.phone)}</td><td>${blankCell(v.address)}</td></tr>`).join('')}${(c.perps||[]).map(v=>`<tr><td>가해(관련)</td><td>${blankCell(v.name)}</td><td>${blankCell(v.guardian)}</td><td>${blankCell(v.relation)}</td><td>${blankCell(v.phone)}</td><td>${blankCell(v.address)}</td></tr>`).join('')}</table>`)
+      + `${tail}`,
 
-    form26: `${head('학교폭력대책심의위원회 개최 요청 공문','[공문14]  학교폭력대책심의위원회 개최 요청 공문')}
-      <table class="formTable">
-        <tr><th>수신</th><td>${blankCell(appState.settings.office)}</td></tr>
-        <tr><th>제목</th><td>학교폭력대책심의위원회 개최 요구</td></tr>
-        <tr><th>요구 사유</th><td style="white-space:pre-wrap">${blankCell(c.summary)}</td></tr>
-        <tr><th>첨부 서류</th><td style="white-space:pre-wrap">1. 학생 작성 확인서 1부.\n2. 보호자 확인서 1부.\n3. 목격학생 확인서 1부.\n4. 학교폭력 사안조사 보고서 1부.\n5. 피해·가해관련학생 긴급조치 보고서 1부.\n6. 전담기구 심의결과 보고서 1부.\n7. 피해·가해관련 학생 보호자 개인정보 정리표 1부.\n8. 학생선수 확인을 위한 관련 서류 1부.\n9. 기타 심의위원회 심의·의결에 필요한 서류 각 1부. 끝.</td></tr>
-      </table>${tail}`,
+    form26: `${head('학교폭력대책심의위원회 개최 요청 공문','[공문14] 학교폭력대책심의위원회 개최 요청 공문')}`
+      + wrapBlock(`<table class="formTable"><tr><th>수신</th><td>${blankCell(appState.settings.office)}</td></tr><tr><th>제목</th><td>학교폭력대책심의위원회 개최 요청</td></tr><tr><th>관련</th><td>학교폭력예방 및 대책에 관한 법률 및 충북교육청 2026 학교폭력 사안처리 A to Z</td></tr><tr><th>요청 사유</th><td style="white-space:pre-wrap">${blankCell(c.summary)}</td></tr><tr><th>붙임</th><td style="white-space:pre-wrap">1. 학교폭력 사안조사 보고서
+2. 학생 작성 확인서
+3. 보호자 확인서
+4. 전담기구 심의결과 보고서
+5. 긴급조치 보고서(해당 시)
+6. 기타 증빙자료</td></tr></table>`)
+      + `${tail}`,
 
-    form27: `${head('학교폭력 전담조사관 자료 관리 대장','[서식13]  학교폭력 전담조사관 자료 관리 대장')}<div class="meta">(${escapeHtml(school)})학교</div>${ledgerForm27Table()}<div class="meta" style="margin-top:8px">[참고] 책임교사는 위 대장을 작성하고 관리함 / 사안 종료 후 조사관은 모든 자료를 해당 학교를 방문하여 폐기하고 서명함 / 학교폭력 전담조사관 자료 관리 대장은 학년도 말에 폐기함</div>${tail}`,
+    form27: `${head('학교폭력 전담조사관 자료 관리 대장','[서식13] 학교폭력 전담조사관 자료 관리 대장')}`
+      + wrapBlock(`<div class="meta">(${escapeHtml(school)})학교</div>${ledgerForm27Table()}`)
+      + `<div class="meta" style="margin-top:8px">책임교사는 위 대장을 작성하고 관리하며, 사안 종료 후 조사관은 모든 자료를 폐기 후 통보합니다.</div>${tail}`,
 
-    form31: `${head('학교폭력 전담기구 심의결과 보고서','[서식18]  학교폭력 전담기구 심의결과 보고서 [자체해결]')}
-      <div class="meta">${escapeHtml(caseRef(c, school))}</div>
-      <table class="formTable">
-        <tr><th>전담기구 심의일</th><td>${blankCell(dotDate(c.committeeDate))}</td><th>학교장 자체해결 부의 여부</th><td>${blankCell(c.selfResolve)}</td></tr>
-        <tr><th>피해관련학생 및 보호자 심의위원회 개최 요구 의사</th><td>${blankCell(c.parentAgree)}</td><th>전담기구 의견</th><td>${blankCell(selfResolveOpinion(c))}</td></tr>
-        <tr><th>기타 의견</th><td colspan="3" style="white-space:pre-wrap">${blankCell(c.committeeReviewNote || c.memo)}</td></tr>
-      </table>${tail}`,
+    form31: `${head('학교폭력 전담기구 심의결과 보고서','[서식18] 학교폭력 전담기구 심의결과 보고서')}`
+      + wrapBlock(`
+        <div class="meta">${escapeHtml(schoolCaseRef)} ※ 이 보고서로 회의록을 대신함</div>
+        <table class="formTable">
+          <tr><th>1. 일 시</th><td>${blankCell(dotDate(c.committeeDate))}</td></tr>
+          <tr><th>2. 장 소</th><td>${blankCell(c.committeePlace || '')}</td></tr>
+          <tr><th>3. 참 석 자</th><td>${blankCell(c.committeeMembers || '')}</td></tr>
+          <tr><th>4. 심의주제</th><td>사안번호 ${blankCell(c.caseNo)}에 대한 학교장 자체해결 여부 심의</td></tr>
+          <tr><th>5. 심의내용</th><td style="white-space:pre-wrap">전담기구(전담조사관) 사안 조사 내용
+• ${blankCell(c.summary)}
+• ${blankCell(c.committeeReviewNote)}</td></tr>
+        </table>
+        <table class="formTable">
+          <tr><th>학교장 자체해결 가능요건</th><th>해당 여부(O, X)</th></tr>
+          <tr><td>1. 2주 이상의 신체적·정신적 치료를 요하는 진단서를 발급받지 않은 경우</td><td></td></tr>
+          <tr><td>2. 재산상 피해가 없거나 즉각 복구된 경우(또는 복구 약속이 있는 경우)</td><td></td></tr>
+          <tr><td>3. 학교폭력이 지속적이지 않은 경우</td><td></td></tr>
+          <tr><td>4. 신고·진술·자료제공 등에 대한 보복행위가 아닌 경우</td><td></td></tr>
+          <tr><td>학교장 자체해결 동의서 제출 여부</td><td>${mark(Array.isArray(c.selfResolve) ? c.selfResolve.length>0 : !!c.selfResolve)}</td></tr>
+        </table>
+        <table class="formTable">
+          <tr><th>6. 결정사항</th><td style="white-space:pre-wrap">• ${blankCell(c.committeeDecision || '자체해결 가능 요건 충족 여부를 심의함')}
+• 피해관련학생 및 그 보호자의 심의위원회 개최 요구 의사: ${blankCell(formatMulti(c.selfResolve))}</td></tr>
+        </table>`)
+      + `${tail}`,
 
-    form32: `${head('학교장 자체해결 동의서(학교폭력대책심의위원회 미개최 요구 의사 확인서)','[서식20]  학교장 자체해결 동의서')}
-      <div class="meta">${escapeHtml(caseRef(c, school))}</div>
-      <table class="formTable">
-        <tr><th>피해관련학생</th><td>${blankCell(joinRoleNames(c.victims))}</td><th>가해관련학생</th><td>${blankCell(joinRoleNames(c.perps))}</td></tr>
-        <tr><th>가해관련학생 측 태도</th><td>${blankCell(c.parentAgree)}</td><th>피해관련학생 측 요구</th><td>${blankCell(c.selfResolve)}</td></tr>
-        <tr><th>안내 문구</th><td colspan="3" style="white-space:pre-wrap">사안 조사 내용과 자체해결 요건을 확인하였으며 학교장 자체해결에 동의하는 경우 추후 동일 사안에 대해 심의위원회 개최를 요청할 수 없음을 확인합니다.</td></tr>
-      </table>${tail}`,
+    form32: `${head('학교장 자체해결 동의서','[서식20] 학교장 자체해결 동의서')}`
+      + wrapBlock(`
+        <div class="meta">${escapeHtml(schoolCaseRef)}</div>
+        <table class="formTable">
+          <tr><th>관련학생 소속학교</th><th>학년/반</th><th>학생성명</th></tr>
+          ${(c.victims||[]).map(v=>`<tr><td>${blankCell(school)}</td><td>${blankCell([v.grade,v.classNum].filter(Boolean).join('/'))}</td><td>${blankCell(v.name)}</td></tr>`).join('') || `<tr><td colspan="3"></td></tr>`}
+          ${(c.perps||[]).map(v=>`<tr><td>${blankCell(school)}</td><td>${blankCell([v.grade,v.classNum].filter(Boolean).join('/'))}</td><td>${blankCell(v.name)}</td></tr>`).join('')}
+          <tr><th>사안 조사 내용</th><td colspan="2" style="white-space:pre-wrap">${blankCell(c.summary)}</td></tr>
+        </table>
+        <div style="white-space:pre-wrap;line-height:1.8">사안조사 내용 및 자체 해결 요건을 충족함을 확인하였으며, 학교장 자체해결로 처리 시 추후 위 사안에 대하여 학교폭력대책심의위원회 개최를 요청할 수 없음을 알고 있습니다.
+위 사안에 대하여 학교폭력대책심의위원회를 개최하지 않고 학교장 자체해결에 동의합니다.</div>
+        <div style="margin-top:18px">2026년 &nbsp;&nbsp; 월 &nbsp;&nbsp; 일</div>
+        <div style="margin-top:12px">관련학생: ${line(120)}</div>
+        <div style="margin-top:10px">관련학생 보호자: ${line(120)}</div>
+        <div style="margin-top:12px">${escapeHtml(school)}학교장 귀중</div>`)
+      + `${tail}`,
 
-    form33: `${head('학교장 (자체해결/종결) 결과 보고서','[서식22]  학교장 (자체해결/종결) 결과 보고서')}
-      <div class="meta">${escapeHtml(caseRef(c, school))}</div>
-      <table class="formTable">
-        <tr><th>학교장 자체해결 결과</th><td>${blankCell(c.selfResolve)}</td><th>통보일</th><td>${blankCell(dotDate(c.actionDate || c.officeDate))}</td></tr>
-        <tr><th>관계회복 및 후속지원</th><td colspan="3" style="white-space:pre-wrap">${blankCell(c.initialActions || c.memo)}</td></tr>
-        <tr><th>교육(지원)청 통보</th><td colspan="3">${blankCell(c.officeReport)} ${c.officeDate ? '/ ' + escapeHtml(dotDate(c.officeDate)) : ''}</td></tr>
-      </table>${tail}`,
+    form33: `${head('학교장 (자체해결/종결) 결과 보고서','[서식22] 학교장 (자체해결/종결) 결과 보고서 [보고용, 공동학폭용]')}`
+      + wrapBlock(`
+        <div class="meta">${escapeHtml(schoolCaseRef)}</div>
+        <table class="formTable">
+          <tr><th>관련학생 소속학교</th><th>학년/반/번호</th><th>학생이름</th></tr>
+          ${relatedRows(c).map(r=>`<tr><td>${blankCell(r.school)}</td><td>${blankCell(gradeClassNo(r.person))}</td><td>${blankCell(r.person.name)}</td></tr>`).join('') || `<tr><td colspan="3"></td></tr>`}
+          <tr><th>사안 조사 내용</th><td colspan="2" style="white-space:pre-wrap">${blankCell(c.summary)}</td></tr>
+          <tr><th>학교폭력이 아닌 사안에 대한 종결</th><td colspan="2">${mark(c.status==='종결' && !c.actionCode)} 종결</td></tr>
+          <tr><th>학교폭력 자체해결 사안</th><td colspan="2" style="white-space:pre-wrap">${blankCell(formatMulti(c.selfResolve))}</td></tr>
+          <tr><th>학교장 종결처리 사안</th><td colspan="2" style="white-space:pre-wrap">${blankCell(c.committeeReviewNote || c.memo)}</td></tr>
+          <tr><th>관계회복 프로그램 운영</th><td colspan="2">${mark(!!c.relationRecoveryUsed)} 운영 &nbsp;&nbsp; ${mark(!c.relationRecoveryUsed)} 미운영</td></tr>
+        </table>
+        <div style="margin-top:16px;text-align:right">학교장 (자체해결/종결) 결과를 보고합니다. ${blankCell(currentDate)} ${escapeHtml(school)}학교장</div>`)
+      + `${tail}`,
 
-    form34: `${head('학교폭력대책심의위원회 개최 요청서','[서식23]  학교폭력대책심의위원회 개최 요청서')}
-      <div class="meta">${escapeHtml(caseRef(c, school))}</div>
-      <table class="formTable">
-        <tr><th>신청인</th><th>소속학교</th><th>학년/반</th><th>학생성명</th><th>보호자성명</th></tr>
-        <tr><td>피해관련학생측</td><td>${blankCell(school)}</td><td>${blankCell([victim.grade, victim.classNum].filter(Boolean).join('/'))}</td><td>${blankCell(victim.name)}</td><td>${blankCell(victim.guardian)}</td></tr>
-        <tr><th>신청사유</th><td colspan="4" style="white-space:pre-wrap">${blankCell(c.summary)}</td></tr>
-        <tr><th>요건 해당 여부</th><td colspan="4" style="white-space:pre-wrap">1. 재산상 손해를 복구하기로 약속하였으나 이행하지 않은 경우: □\n2. 조사과정에서 확인되지 않았던 사실이 추가적으로 확인된 경우: □</td></tr>
-      </table>${tail}`,
+    form34: `${head('학교폭력대책심의위원회 개최 요청서','[서식23] 학교폭력대책심의위원회 개최 요청서')}`
+      + wrapBlock(`<div class="meta">${escapeHtml(schoolCaseRef)}</div><table class="formTable"><tr><th>신청인</th><th>소속학교</th><th>학년/반</th><th>학생성명</th><th>보호자성명</th></tr><tr><td>피해학생측</td><td>${blankCell(school)}</td><td>${blankCell([victim.grade, victim.classNum].filter(Boolean).join('/'))}</td><td>${blankCell(victim.name)}</td><td>${blankCell(victim.guardian)}</td></tr><tr><th>신청사유</th><td colspan="4" style="white-space:pre-wrap">${blankCell(c.summary)}</td></tr><tr><th>요건 해당 여부</th><td colspan="4" style="white-space:pre-wrap">1. 재산상 손해를 복구하기로 약속하였으나 이행하지 않은 경우 □
+2. 조사과정에서 확인되지 않았던 사실이 추가적으로 확인된 경우 □</td></tr></table>`)
+      + `${tail}`,
 
-    form35: `${head('학교폭력대책심의위원회 개최 요구 취소 요청서(보호자)','[서식26]  학교폭력대책심의위원회 개최 요구 취소 요청서(보호자)')}
-      <div class="meta">${escapeHtml(caseRef(c, school))}</div>
-      <table class="formTable">
-        <tr><th>신청인</th><th>소속학교</th><th>학년/반</th><th>학생성명</th><th>보호자성명</th></tr>
-        <tr><td>피해관련학생측</td><td>${blankCell(school)}</td><td>${blankCell([victim.grade, victim.classNum].filter(Boolean).join('/'))}</td><td>${blankCell(victim.name)}</td><td>${blankCell(victim.guardian)}</td></tr>
-        <tr><th>내용</th><td colspan="4" style="white-space:pre-wrap">이 사안에 대해서 학교폭력대책심의위원회 개최 요구를 취소하며 학교장 자체해결에 동의합니다.</td></tr>
-      </table>${tail}`,
+    form35: `${head('학교폭력대책심의위원회 개최 요구 취소 요청서(보호자)','[서식26] 학교폭력대책심의위원회 개최 요구 취소 요청서(보호자)')}`
+      + wrapBlock(`<div class="meta">${escapeHtml(schoolCaseRef)}</div><table class="formTable"><tr><th>신청인</th><th>소속학교</th><th>학년/반</th><th>학생성명</th><th>보호자성명</th></tr><tr><td>피해관련학생측</td><td>${blankCell(school)}</td><td>${blankCell([victim.grade, victim.classNum].filter(Boolean).join('/'))}</td><td>${blankCell(victim.name)}</td><td>${blankCell(victim.guardian)}</td></tr><tr><th>내용</th><td colspan="4" style="white-space:pre-wrap">이 사안에 대해서 학교폭력대책심의위원회 개최 요구를 취소하며 학교장 자체해결에 동의합니다.</td></tr></table>`)
+      + `${tail}`,
 
-    form36: `${head('학교폭력 전담기구 심의결과 보고서 [종결]','[서식19]  학교폭력 전담기구 심의결과 보고서 [종결]')}
-      <div class="meta">${escapeHtml(caseRef(c, school))}</div>
-      <table class="formTable">
-        <tr><th>종결 구분</th><td>학교폭력 아닌 사안</td><th>종결일</th><td>${blankCell(dotDate(c.closedDate))}</td></tr>
-        <tr><th>종결 사유</th><td colspan="3" style="white-space:pre-wrap">${blankCell(c.memo || '조사 결과 학교폭력예방법상 학교폭력 사안으로 보기 어려워 종결 처리')}</td></tr>
-      </table>${tail}`,
+    form36: `${head('학교폭력 전담기구 심의결과 보고서 [종결]','[서식19] 학교폭력 전담기구 심의결과 보고서 [종결]')}`
+      + wrapBlock(`
+        <div class="meta">${escapeHtml(schoolCaseRef)} ※ 이 보고서로 회의록을 대신함</div>
+        <table class="formTable">
+          <tr><th>1. 일 시</th><td>${blankCell(dotDate(c.committeeDate))}</td></tr>
+          <tr><th>2. 장 소</th><td>${blankCell(c.committeePlace || '')}</td></tr>
+          <tr><th>3. 참 석 자</th><td>${blankCell(c.committeeMembers || '')}</td></tr>
+          <tr><th>4. 심의주제</th><td>사안번호 ${blankCell(c.caseNo)}에 대한 학교장 자체해결(종결) 여부 심의</td></tr>
+          <tr><th>5. 심의내용</th><td style="white-space:pre-wrap">• ${blankCell(c.summary)}
+• ${blankCell(c.committeeReviewNote)}</td></tr>
+          <tr><th>6. 결정사항</th><td style="white-space:pre-wrap">• 학교폭력이 아님이 확인되어 종결 처리
+• 가해자(성인)가 경찰 수사 중이거나 가해자를 특정할 수 없는 경우 학교장 종결 처리 가능</td></tr>
+        </table>`)
+      + `${tail}`,
 
-    form37: `${head('학교장 종결 처리 동의서','[서식21]  학교장 종결 처리 동의서')}
-      <div class="meta">${escapeHtml(caseRef(c, school))}</div>
-      <table class="formTable">
-        <tr><th>학교장 자체해결 요건</th><td style="white-space:pre-wrap">${blankCell(selfResolveChecklistText())}</td></tr>
-        <tr><th>피해관련학생 보호자 동의</th><td>${blankCell(c.parentAgree)}</td></tr>
-        <tr><th>비고</th><td>${blankCell(c.selfResolve)}</td></tr>
-      </table>${tail}`,
+    form37: `${head('학교장 종결 처리 동의서','[서식21] 학교장 종결 처리 동의서')}`
+      + wrapBlock(`
+        <div class="meta">(학교폭력대책심의위원회 미개최 요구 동의서) &nbsp;&nbsp; ${escapeHtml(schoolCaseRef)}</div>
+        <table class="formTable">
+          <tr><th>관련학생 소속학교</th><th>학년/반</th><th>학생성명</th></tr>
+          ${(c.victims||[]).map(v=>`<tr><td>${blankCell(school)}</td><td>${blankCell([v.grade,v.classNum].filter(Boolean).join('/'))}</td><td>${blankCell(v.name)}</td></tr>`).join('') || `<tr><td colspan="3"></td></tr>`}
+          <tr><th>사안 조사 내용</th><td colspan="2" style="white-space:pre-wrap">${blankCell(c.summary)}</td></tr>
+        </table>
+        <div style="white-space:pre-wrap;line-height:1.8">위 사안 조사 내용과 학교장 종결 요건을 확인하였으며 본인(피해관련 학생 측)은 사안에 대해 심의위원회 개최를 원하지 않으며 특별한 사유가 없는 한 심의위원회 제소를 하지 않을 것을 확약하고 이 동의서에 서명합니다.</div>
+        <div style="margin-top:18px">2026년 &nbsp;&nbsp; 월 &nbsp;&nbsp; 일</div>
+        <div style="margin-top:12px">관련학생: ${line(120)} &nbsp;&nbsp; 관련학생 보호자: ${line(120)}</div>
+        <div style="margin-top:12px">${escapeHtml(school)}학교장 귀중</div>`)
+      + `${tail}`,
 
-    form41: `${head('학교폭력 가해학생 조치사항 관리 대장','[서식27]  학교폭력 가해학생 조치사항 관리 대장')}<div class="meta">※ 보존기간: 졸업 후 4년 / ※ 학교폭력 가해학생 조치 조건부 기재유보 관리대장을 참고하여 학교폭력 조치사항 관리대장에 기재 / ※ 전출교에서는 전입교에 학교폭력 가해학생 조치사항 관련내용을 송부</div>${ledgerForm41Table()}${tail}`,
+    form41: `${head('학교폭력 가해학생 조치사항 관리 대장','[서식27] 학교폭력 가해학생 조치사항 관리 대장')}`
+      + wrapBlock(`${ledgerForm41Table()}`)
+      + `<div class="meta" style="margin-top:8px">보존기간: 졸업 후 4년</div>${tail}`,
 
-    form42: `${head('학교폭력 가해학생 조치(제1호·제2호·제3호) 조건부 기재유보 관리대장','[서식28]  학교폭력 가해학생 조치(제1호·제2호·제3호) 조건부 기재유보 관리대장')}<div class="meta">※ 보존기간: 졸업학년도 2월말에 폐기 / ※ 전출교에서는 전입교에 학교폭력 가해학생 조치 조건부 기재유보 관리대장을 송부</div><div class="meta" style="white-space:pre-wrap">[참고] 가해학생 조치사항(제1호·제2호·제3호)을 이행한 가해학생이 동일 학교급에서 다른 학교폭력 사안으로 가해학생 조치를 받지 않은 경우(초등학생은 조치를 받은 날부터 3년 경과)에 한해 조건부 기재하지 않음 / 다만 동일 학교급(초등학생은 3년 내)에서 다른 학교폭력 사안으로 다시 조치를 받은 경우에는 이전에 적지 않은 조치사항을 포함하여 기재 / 심의위원회가 정한 이행기간 내에 조치사항을 이행하지 않으면 이후 이행해도 기재내용은 유지</div>${ledgerForm42Table()}<div class="meta" style="margin-top:8px">※ 조치일자는 교육장 내부결재일(교육지원청에서 학교로 통보함) / ※ 조치이행 기간 내에 이행하지 않은 경우에는 해당란에 취소선을 그림</div>${tail}`,
+    form42: `${head('학교폭력 가해학생 조치(제1호·제2호·제3호) 조건부 기재유보 관리대장','[서식28] 학교폭력 가해학생 조치(제1호·제2호·제3호) 조건부 기재유보 관리대장')}`
+      + wrapBlock(`${ledgerForm42Table()}`)
+      + `<div class="meta" style="margin-top:8px">보존기간: 졸업학년도 2월말 폐기</div>${tail}`,
 
-    form43: `${head('학교폭력 피해학생 관련 정보 제공 동의서','[서식41]  학교폭력 피해학생 관련 정보 제공 동의서')}
-      <div class="meta">${escapeHtml(caseRef(c, school))}</div>
-      <table class="formTable">
-        <tr><th>피해관련학생</th><td>${blankCell(victim.name)}</td><th>보호자</th><td>${blankCell(victim.guardian)}</td></tr>
-        <tr><th>제공 목적</th><td colspan="3">전입교 및 상급학교에서의 피해관련학생 보호 및 지원을 위하여 관련 정보를 제공합니다.</td></tr>
-        <tr><th>제공 동의 내용</th><td colspan="3" style="white-space:pre-wrap">${blankCell(c.damage || c.summary)}</td></tr>
-      </table>${tail}`,
+    form43: `${head('학교폭력 피해학생 관련 정보 제공 동의서','[서식41] 학교폭력 피해학생 관련 정보 제공 동의서')}`
+      + wrapBlock(`<div class="meta">${escapeHtml(schoolCaseRef)}</div><table class="formTable"><tr><th>피해관련학생</th><td>${blankCell(victim.name)}</td><th>보호자</th><td>${blankCell(victim.guardian)}</td></tr><tr><th>제공 목적</th><td colspan="3">전입교 및 상급학교에서의 피해관련학생 보호 및 지원을 위하여 관련 정보를 제공합니다.</td></tr><tr><th>제공 동의 내용</th><td colspan="3" style="white-space:pre-wrap">${blankCell(c.damage || c.summary)}</td></tr></table>`)
+      + `${tail}`,
 
-    form44: `${head('학교폭력 피해학생 관련 정보 카드','[서식42]  학교폭력 피해학생 관련 정보 카드')}
-      <div class="meta">${escapeHtml(caseRef(c, school))}</div>
-      <table class="formTable">
-        <tr><th>피해관련학생</th><td>${blankCell(victim.name)}</td><th>학교/학년/반</th><td>${blankCell(`${school} / ${gradeClassText(victim)}`)}</td></tr>
-        <tr><th>보호 및 지원 필요사항</th><td colspan="3" style="white-space:pre-wrap">${blankCell(c.damage || '상담, 심리정서 지원, 학급 적응 지원')}</td></tr>
-        <tr><th>학교 메모</th><td colspan="3" style="white-space:pre-wrap">${blankCell(c.memo)}</td></tr>
-      </table>${tail}`,
+    form44: `${head('학교폭력 피해학생 관련 정보 카드','[서식42] 학교폭력 피해학생 관련 정보 카드')}`
+      + wrapBlock(`<div class="meta">${escapeHtml(schoolCaseRef)}</div><table class="formTable"><tr><th>피해관련학생</th><td>${blankCell(victim.name)}</td><th>학교/학년/반</th><td>${blankCell(`${school} / ${gradeClassText(victim)}`)}</td></tr><tr><th>보호 및 지원 필요사항</th><td colspan="3" style="white-space:pre-wrap">${blankCell(c.damage || '상담, 심리정서 지원, 학급 적응 지원')}</td></tr><tr><th>학교 메모</th><td colspan="3" style="white-space:pre-wrap">${blankCell(c.memo)}</td></tr></table>`)
+      + `${tail}`,
 
-    form45: `${head('집행정지 결정에 따른 분리 요청서','[서식43]  집행정지 결정에 따른 분리 요청서')}
-      <div class="meta">※ 교육지원청으로부터 받은 '조치결정 통보서' 첨부</div>
-      <div class="meta">${escapeHtml(caseRef(c, school))}</div>
-      <table class="formTable">
-        <tr><th></th><th>소속학교</th><th>학년/반</th><th>학생 성명</th><th>보호자 성명</th></tr>
-        <tr><th>피해관련학생</th><td>${blankCell(school)}</td><td>${blankCell([victim.grade, victim.classNum].filter(Boolean).join('/'))}</td><td>${blankCell(victim.name)}</td><td>${blankCell(victim.guardian)}</td></tr>
-        <tr><th>가해관련학생</th><td>${blankCell(school)}</td><td>${blankCell([perp.grade, perp.classNum].filter(Boolean).join('/'))}</td><td>${blankCell(perp.name)}</td><td>${blankCell(perp.guardian)}</td></tr>
-        <tr><th>분리 요청 이유</th><td colspan="4" style="white-space:pre-wrap">${blankCell(c.memo || c.damage || c.summary)}</td></tr>
-      </table>
-      <div style="margin-top:12px">「학교폭력예방법」 제17조의4 제3항에 따라, 가해관련학생과의 분리를 요청합니다.</div>${tail}`,
+    form45: `${head('집행정지 결정에 따른 분리 요청서','[서식43] 집행정지 결정에 따른 분리 요청서')}`
+      + wrapBlock(`<div class="meta">${escapeHtml(schoolCaseRef)}</div><table class="formTable"><tr><th></th><th>소속학교</th><th>학년/반</th><th>학생 성명</th><th>보호자 성명</th></tr><tr><th>피해관련학생</th><td>${blankCell(school)}</td><td>${blankCell([victim.grade, victim.classNum].filter(Boolean).join('/'))}</td><td>${blankCell(victim.name)}</td><td>${blankCell(victim.guardian)}</td></tr><tr><th>가해관련학생</th><td>${blankCell(school)}</td><td>${blankCell([perp.grade, perp.classNum].filter(Boolean).join('/'))}</td><td>${blankCell(perp.name)}</td><td>${blankCell(perp.guardian)}</td></tr><tr><th>분리 요청 이유</th><td colspan="4" style="white-space:pre-wrap">${blankCell(c.memo || c.damage || c.summary)}</td></tr></table>`)
+      + `${tail}`,
 
-    form51: `${head('분쟁조정 신청서','[참고서식] 분쟁조정 신청서')}
-      <div class="meta">${escapeHtml(caseRef(c, school))}</div>
-      <table class="formTable">
-        <tr><th rowspan="3">학생</th><th>학교, 학년, 반</th><td>${blankCell([school, victim.grade ? `${victim.grade}학년` : '', victim.classNum ? `${victim.classNum}반` : ''].filter(Boolean).join(' '))}</td></tr>
-        <tr><th>성명</th><td>${blankCell(victim.name)} ${victim.gender ? '(' + escapeHtml(victim.gender) + ')' : '(남 / 여)'}</td></tr>
-        <tr><th>주소</th><td>${blankCell(victim.address)}</td></tr>
-        <tr><th rowspan="2">보호자</th><th>성명 / 관계 / 전화번호</th><td>${blankCell(victim.guardian)} ${victim.relation ? '/ ' + escapeHtml(victim.relation) : ''} ${victim.phone ? '/ ' + escapeHtml(victim.phone) : ''}</td></tr>
-        <tr><th>주소</th><td>${blankCell(victim.address)}</td></tr>
-        <tr><th colspan="2">(신청사유)</th><td style="white-space:pre-wrap">${blankCell(c.memo || c.summary)}</td></tr>
-      </table>
-      <div style="margin-top:12px">위와 같이 분쟁조정을 신청합니다.</div>
-      <div style="margin-top:12px">신청일 :&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;년&nbsp;&nbsp;&nbsp;&nbsp;월&nbsp;&nbsp;&nbsp;&nbsp;일</div>
-      <div style="margin-top:8px">신청인 : <span class="signLine"></span></div>${tail}`
+    form51: `${head('분쟁조정 신청서','[서식51] 분쟁조정 신청서')}`
+      + wrapBlock(`<div class="meta">${escapeHtml(schoolCaseRef)}</div><table class="formTable"><tr><th rowspan="3">학생</th><th>학교, 학년, 반</th><td>${blankCell([school, victim.grade ? `${victim.grade}학년` : '', victim.classNum ? `${victim.classNum}반` : ''].filter(Boolean).join(' '))}</td></tr><tr><th>성명</th><td>${blankCell(victim.name)}</td></tr><tr><th>주소</th><td>${blankCell(victim.address)}</td></tr><tr><th rowspan="2">보호자</th><th>성명 / 관계 / 전화번호</th><td>${blankCell(victim.guardian)} ${victim.relation ? '/ ' + escapeHtml(victim.relation) : ''} ${victim.phone ? '/ ' + escapeHtml(victim.phone) : ''}</td></tr><tr><th>주소</th><td>${blankCell(victim.address)}</td></tr><tr><th colspan="2">(신청사유)</th><td style="white-space:pre-wrap">${blankCell(c.memo || c.summary)}</td></tr></table>`)
+      + `${tail}`
   };
   return forms[type] || `${head(formTitle(type))}${tail}`;
 }
