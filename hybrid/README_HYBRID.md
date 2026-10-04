@@ -1,64 +1,112 @@
-# SchoolSVS Hybrid v0.1
+# SchoolSVS Hybrid v0.2
 
-기존 HTML/JavaScript UI를 최대한 유지하면서 Python이 저장·검증·워크플로우·문서생성을 담당하도록 전환하기 위한 1차 골격입니다.
+기존 HTML/JavaScript UI를 최대한 유지하면서 Python이 저장·검증·워크플로우를 담당하도록 단계적으로 전환하는 하이브리드 버전입니다.
 
 ## 현재 포함
 
-- `app/main.py` : localhost 전용 Python API + 기존 정적 파일 제공
+- `app/main.py` : localhost 전용 Python API + 정적 파일 제공
 - `app/storage.py` : SQLite 저장 계층
 - `app/workflow.py` : 사안 검증 및 워크플로우 상태 계산
 - `app/rules_2026.json` : 연도별 업무규칙 분리 초안
-- `web/hybrid-bridge.js` : 기존 브라우저 UI와 Python API 연결
-- `run_schoolsvs.bat` : 개발용 실행기
+- `web/index.html` : 기존 UI를 그대로 담는 하이브리드 셸
+- `web/bridge.js` : 기존 localStorage 변경 감지 + SQLite 동기화 + Python 검증 호출
+- `tests/test_engine.py` : 저장·삭제·검증·워크플로우 회귀 테스트
+- `run_schoolsvs.bat` : 개발용 Windows 실행기
 
-## 원칙
+## v0.2의 안전 원칙
 
-1. 기존 `index.html`의 UI와 사용자 입력 구조를 우선 보존한다.
-2. `localStorage`는 1회 마이그레이션 후 SQLite로 이전한다.
-3. 계산·검증·통계는 Python 단일 엔진에서 처리한다.
-4. 법정/행정 기한은 공식 지침과 대조해 규칙 파일에 버전별로 관리한다.
-5. HWPX는 실제 원본 서식을 템플릿으로 연결한다.
-6. 배포본은 Python 미설치 PC에서도 실행되는 포터블 EXE를 목표로 한다.
+1. 기존 `index.html` 자체는 수정하지 않는다.
+2. 기존 브라우저 `localStorage`를 즉시 삭제하거나 강제 이전하지 않는다.
+3. 하이브리드 실행 시 기존 데이터를 SQLite로 안전 복사한다.
+4. 이후 저장·수정·삭제는 브리지에서 감지해 SQLite 상태와 동기화한다.
+5. Python 엔진이 연결되지 않아도 기존 HTML/JavaScript 프로그램은 계속 사용할 수 있다.
+6. SQLite 데이터가 있고 브라우저 데이터가 비어 있으면 사용자가 명시적으로 복원할 수 있다.
+7. 법정·행정 기한은 공식 지침 검증 전 임의로 추가하지 않는다.
 
-## 1차 실행
+## 실행
 
-저장소 루트에서 `hybrid/run_schoolsvs.bat`를 실행하면 `127.0.0.1:8768`에서 기존 `index.html`이 열립니다.
+`hybrid/run_schoolsvs.bat`를 실행합니다.
 
-현재 단계에서는 기존 UI가 여전히 `localStorage`를 사용합니다. 이는 회귀오류를 막기 위한 의도적인 상태입니다.
+Python 서버가 `127.0.0.1:8768`에서 시작되고 다음 하이브리드 화면이 자동으로 열립니다.
 
-브리지 연결 후 콘솔에서 다음 명령으로 기존 데이터를 SQLite로 복사할 수 있습니다.
-
-```javascript
-await SchoolSVSHybrid.migrateLocalStorage()
+```text
+http://127.0.0.1:8768/hybrid/web/index.html
 ```
 
-## 다음 작업
+상단에 `Python 연결됨`이 표시되면 하이브리드 엔진과 SQLite가 정상 연결된 상태입니다.
 
-### 1. UI-엔진 연결
+## 데이터 동작
 
-기존 `index.html`의 `DB.load/save/remove`, `saveCase()`, `saveSettings()`를 브리지 기반으로 단계적으로 교체합니다. 한 번에 바꾸지 않고 읽기 → 저장 → 삭제 순으로 전환합니다.
+### 기존 데이터가 있는 경우
 
-### 2. 데이터 모델 정규화
+기존 `sv_assist_v2_*` localStorage 자료를 읽어 SQLite에 복사합니다. 원본 브라우저 데이터는 그대로 유지합니다.
 
-현재 사안 JSON 구조를 보존한 상태로 저장하고, 이후 학생·조치·문서이력·기한이력을 별도 테이블로 정규화합니다.
+### 이후 저장/수정/삭제
 
-### 3. 업무규칙 정밀화
+기존 화면에서 발생하는 localStorage 변경을 브리지가 감지하여 전체 사안 상태를 SQLite와 맞춥니다. 기존 화면에서 삭제된 사안은 SQLite에서도 제거됩니다.
 
-충북 학교폭력 사안처리 지침/A to Z의 각 단계와 서식을 실제 필드에 매핑합니다. 공식 지침 확인 전에는 임의의 기한 수치를 코드에 넣지 않습니다.
+### SQLite 복원
 
-### 4. HWPX 엔진
+브라우저 저장자료가 비어 있고 SQLite에 자료가 남아 있으면 상단 `엔진 상태` 패널에서 `SQLite 데이터를 기존 화면으로 불러오기`를 사용할 수 있습니다.
 
-실제 HWPX 원본 서식을 `templates/`에 두고, 사안 데이터의 필드를 표/문단/누름틀 등에 매핑합니다.
+## Python 검증
 
-### 5. 포터블 배포
+상단 `현재 사안 Python 검증` 버튼으로 현재 입력 폼을 Python 검증 엔진에 전달합니다.
 
-최종적으로 PyInstaller 기반 단일 실행기 또는 폴더형 포터블 배포본으로 패키징합니다.
+현재 검증 범위:
 
-## 권장 최종 구조
+- 사안번호/상태/접수일시 등 핵심 필수값
+- 사건 발생일·장소·신고유형·폭력유형·사안개요
+- 피해관련학생/가해관련학생 실명 입력 여부
+- 교육지원청 보고완료 시 보고일
+- 즉시분리 시행/미시행 관련 필드
+- 조사관 지정 시 조사 예정일 확인
+- 조치내용 입력 시 조치 결정일
+- 종결 사안의 종결일
+- 현재 처리상태에 따른 워크플로우 단계 및 완성도
+
+## 회귀 테스트
+
+저장소 루트 기준:
+
+```bash
+python hybrid/tests/test_engine.py
+```
+
+검증 항목:
+
+- 정상 사안 검증
+- 빈 학생명 탐지
+- 종결일 누락 탐지
+- 상태→워크플로우 단계 매핑
+- SQLite 저장/읽기
+- 같은 사안 수정 시 중복 방지
+- 사안 삭제
+- 설정/카운터 KV 저장
+
+## 다음 단계
+
+### v0.3 업무규칙 엔진 정밀화
+
+충청북도교육청 `2026. 학교폭력 사안처리 A to Z`를 기준으로 업무단계·조건·기한·필요서식을 공식 자료와 대조해 `rules_2026.json`으로 이동합니다.
+
+### v0.4 HWPX 엔진
+
+실제 HWPX 원본 서식을 `templates/`에 두고 사안 데이터를 원본 표·문단·누름틀 구조에 매핑합니다.
+
+### v0.5 데이터 모델 강화
+
+현재 JSON 원형을 보존하면서 학생, 조치, 문서이력, 기한이력 등을 별도 구조로 분리합니다.
+
+### 배포 단계
+
+최종적으로 Python 미설치 PC에서도 실행할 수 있는 포터블 EXE/폴더형 배포본으로 패키징합니다.
+
+## 목표 구조
 
 ```text
 schoolsvs/
-├─ index.html
+├─ index.html                 # 기존 UI 원본
 ├─ assets/
 ├─ hybrid/
 │  ├─ app/
@@ -67,7 +115,10 @@ schoolsvs/
 │  │  ├─ workflow.py
 │  │  └─ rules_2026.json
 │  ├─ web/
-│  │  └─ hybrid-bridge.js
+│  │  ├─ index.html           # 하이브리드 셸
+│  │  └─ bridge.js            # 기존 UI ↔ Python 연결
+│  ├─ tests/
+│  │  └─ test_engine.py
 │  ├─ data/
 │  │  └─ schoolsvs.db
 │  ├─ templates/
