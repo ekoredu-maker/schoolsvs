@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from hwpx_engine import BUILT_DIR, TEMPLATE_DIR, load_registry
+from investigation_data import readiness as investigation_readiness
 from student_profiles import profile_readiness
 from workflow import atoz_form10_readiness
 
@@ -77,9 +78,7 @@ def _initial_section(case: dict[str, Any]) -> dict[str, Any]:
 def _atoz_section(case: dict[str, Any]) -> dict[str, Any]:
     result = atoz_form10_readiness(case)
     return {
-        "key": "atoz",
-        "label": "A to Z 추가정보",
-        "ready": bool(result.get("ready")),
+        "key": "atoz", "label": "A to Z 추가정보", "ready": bool(result.get("ready")),
         "score": int(result.get("score") or 0),
         "missing": [str(x.get("label") or x.get("field") or "") for x in result.get("missing") or []],
         "recommended": [str(x.get("label") or x.get("field") or "") for x in result.get("recommended") or []],
@@ -94,13 +93,9 @@ def _student_section(case: dict[str, Any]) -> dict[str, Any]:
         fields = ", ".join(str(x) for x in item.get("fields") or [])
         missing.append(f"{profile}: {fields}" if fields else profile)
     return {
-        "key": "students",
-        "label": "관련학생 상세",
-        "ready": bool(result.get("ready")),
-        "score": int(result.get("score") or 0),
-        "missing": missing,
-        "total": result.get("total", 0),
-        "complete": result.get("complete", 0),
+        "key": "students", "label": "관련학생 상세", "ready": bool(result.get("ready")),
+        "score": int(result.get("score") or 0), "missing": missing,
+        "total": result.get("total", 0), "complete": result.get("complete", 0),
     }
 
 
@@ -118,45 +113,57 @@ def _template_state(document_key: str) -> dict[str, Any]:
     }
 
 
-def form10_readiness(case: dict[str, Any], settings: dict[str, Any] | None = None) -> dict[str, Any]:
-    settings = settings or {}
-    sections = [_basic_section(case, settings), _initial_section(case), _student_section(case), _atoz_section(case)]
-    template = _template_state("form10_case_report")
+def _assemble(document_key: str, label: str, sections: list[dict[str, Any]]) -> dict[str, Any]:
+    template = _template_state(document_key)
     content_ready = all(bool(x.get("ready")) for x in sections)
     score = round(sum(int(x.get("score") or 0) for x in sections) / len(sections)) if sections else 100
-    blocking = []
+    blocking: list[str] = []
     for section in sections:
         for item in section.get("missing") or []:
             blocking.append(f"{section['label']}: {item}")
     if not template["templateReady"]:
-        blocking.append("공식 서식10 HWPX 원본 미등록")
+        blocking.append(f"{label} HWPX 원본 미등록")
     elif not template["builtTemplateReady"]:
-        blocking.append("서식10 생성용 템플릿 미제작")
+        blocking.append(f"{label} 생성용 템플릿 미제작")
     if not template["mappingReady"]:
-        blocking.append("서식10 필드 매핑 미등록")
+        blocking.append(f"{label} 필드 매핑 미등록")
     return {
-        "documentKey": "form10_case_report",
-        "label": "[서식10] 학교폭력 사안접수 보고서",
-        "contentReady": content_ready,
+        "documentKey": document_key, "label": label, "contentReady": content_ready,
         "ready": content_ready and template["templateReady"] and template["builtTemplateReady"] and template["mappingReady"],
-        "score": score,
-        "sections": sections,
-        "blocking": blocking,
-        **template,
+        "score": score, "sections": sections, "blocking": blocking, **template,
     }
+
+
+def form10_readiness(case: dict[str, Any], settings: dict[str, Any] | None = None) -> dict[str, Any]:
+    settings = settings or {}
+    return _assemble(
+        "form10_case_report", "[서식10] 학교폭력 사안접수 보고서",
+        [_basic_section(case, settings), _initial_section(case), _student_section(case), _atoz_section(case)],
+    )
+
+
+def form12_readiness(case: dict[str, Any], settings: dict[str, Any] | None = None) -> dict[str, Any]:
+    settings = settings or {}
+    inv = investigation_readiness(case)
+    investigation_section = {
+        "key": "investigation", "label": "사안조사 기록", "ready": bool(inv.get("ready")),
+        "score": int(inv.get("score") or 0), "missing": list(inv.get("missing") or []),
+        "recommended": list(inv.get("recommended") or []), "notice": inv.get("notice"),
+    }
+    return _assemble(
+        "form12_investigation_report", "[서식12] 학교폭력 사안조사 보고서",
+        [_basic_section(case, settings), _student_section(case), investigation_section],
+    )
 
 
 def document_readiness(document_key: str, case: dict[str, Any], settings: dict[str, Any] | None = None) -> dict[str, Any]:
     if document_key == "form10_case_report":
         return form10_readiness(case, settings=settings)
+    if document_key == "form12_investigation_report":
+        return form12_readiness(case, settings=settings)
     template = _template_state(document_key)
     ready = template["templateReady"] and template["builtTemplateReady"] and template["mappingReady"]
     return {
-        "documentKey": document_key,
-        "contentReady": True,
-        "ready": ready,
-        "score": 100,
-        "sections": [],
-        "blocking": [] if ready else ["공식 원본·생성용 템플릿·필드 매핑을 확인하세요."],
-        **template,
+        "documentKey": document_key, "contentReady": True, "ready": ready, "score": 100,
+        "sections": [], "blocking": [] if ready else ["공식 원본·생성용 템플릿·필드 매핑을 확인하세요."], **template,
     }
