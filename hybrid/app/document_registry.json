@@ -1,8 +1,9 @@
 {
-  "version": "0.8.1-atoz",
+  "version": "0.9.0-atoz-input",
   "source": {
     "title": "2026. 학교폭력 사안처리 세부설명 A to Z (Q&A 포함)",
-    "publisher": "충청북도교육청 인성시민과"
+    "publisher": "충청북도교육청 인성시민과",
+    "form_reference": "2025 학교폭력 사안처리 세부설명 A to Z 서식모음집"
   },
   "documents": {
     "form03_receipt_ledger": {
@@ -26,6 +27,13 @@
         "SCHOOL_NAME": "school.name",
         "CASE_NO": "case.caseNo",
         "RECEIVED_AT": "case.recvAt",
+        "REPORTER_NAME": "case._hybrid.atoz.reporterName",
+        "REPORTER_ROLE": "case._hybrid.atoz.reporterRole",
+        "RECOGNITION_PATH": "case._hybrid.atoz.recognitionPath",
+        "RECEIVER_NAME": "case._hybrid.atoz.receiverName",
+        "RECEIVER_ROLE": "case._hybrid.atoz.receiverRole",
+        "INVESTIGATION_MODE": "case._hybrid.atoz.investigationMode",
+        "NO2_ACTION_DATE": "case._hybrid.atoz.no2ActionDate",
         "INCIDENT_DATE": "case.incidentDate",
         "INCIDENT_PLACE": "case.incidentPlace",
         "VIOLENCE_TYPE": "case.violenceType",
@@ -35,25 +43,33 @@
         "SEPARATION": "case.separation",
         "SEPARATION_PERIOD": "case.sepPeriod",
         "SEPARATION_PLACE": "case.separationPlace",
+        "SEPARATION_EXCEPTION_VICTIM_OPPOSED": "case._hybrid.atoz.separationExceptions.victimOpposed",
+        "SEPARATION_EXCEPTION_NOT_EDUCATION": "case._hybrid.atoz.separationExceptions.notInEducationActivity",
+        "SEPARATION_EXCEPTION_EMERGENCY": "case._hybrid.atoz.separationExceptions.alreadySeparatedByEmergency",
+        "SEPARATION_EXCEPTION_OTHER_SCHOOL": "case._hybrid.atoz.separationExceptions.differentSchool",
+        "SEPARATION_EXCEPTION_OFF_CAMPUS": "case._hybrid.atoz.separationExceptions.offCampusExperience",
+        "SEPARATION_EXCEPTION_SELF_RESOLUTION": "case._hybrid.atoz.separationExceptions.selfResolutionFourCriteria",
+        "GUARDIAN_NOTICE_CHECKED": "case._hybrid.atoz.guardianNoticeChecked",
+        "OTHER_MATTERS": "case._hybrid.atoz.otherMatters",
+        "OTHER_SCHOOL_RELATED": "case._hybrid.atoz.otherSchoolRelated",
+        "OTHER_SCHOOL_NAME": "case._hybrid.atoz.otherSchoolName",
+        "OTHER_SCHOOL_NOTIFY_AT": "case._hybrid.atoz.otherSchoolNotifyAt",
+        "OTHER_SCHOOL_NOTIFY_METHOD": "case._hybrid.atoz.otherSchoolNotifyMethod",
+        "OTHER_SCHOOL_RECIPIENT": "case._hybrid.atoz.otherSchoolRecipient",
+        "OTHER_SCHOOL_CONTACT": "case._hybrid.atoz.otherSchoolContact",
+        "INTERVIEW_AVAILABILITY_CHECKED": "case._hybrid.atoz.interviewAvailabilityChecked",
+        "VICTIM_INTERVIEW_TIME": "case._hybrid.atoz.victimInterviewTime",
+        "PERP_INTERVIEW_TIME": "case._hybrid.atoz.perpInterviewTime",
+        "VICTIM_RECOVERY_OPINION": "case._hybrid.atoz.victimRecoveryOpinion",
+        "PERP_RECOVERY_OPINION": "case._hybrid.atoz.perpRecoveryOpinion",
         "OFFICE_REPORT_DATE": "case.officeDate",
         "TEACHER_NAME": "teacher.name",
         "TEACHER_POSITION": "teacher.position"
       },
-      "data_gaps": [
-        "신고자 성명·신분 및 익명 여부",
-        "접수·인지 경로",
-        "접수자·인지자 성명·신분",
-        "조사관 배정요청 또는 학교 자체조사 선택",
-        "가해관련학생 긴급조치 2호 시행일",
-        "즉시분리 미시행 세부 예외사유 체크",
-        "관련학생별 학교명·학번·성별",
-        "관련학생별 보호자 통보 일시·방법",
-        "관련학생별 관계회복 프로그램 안내 여부",
-        "학생선수·장애학생·특수교육대상자·다문화학생·탈북학생 여부",
-        "경찰신고·고소·소송 등 기타사항",
-        "타학교 관련 여부·학교명·통보일시·방법·담당자·연락처",
-        "피해·가해 관련 전담조사관 면담 가능시간",
-        "피해·가해 관련학생의 관계회복 프로그램 의견"
+      "remaining_data_gaps": [
+        "관련학생별 학교명·학번·성별의 구조화 데이터",
+        "관련학생별 보호자 통보 일시·방법의 개별 기록",
+        "관련학생별 학생선수·장애학생·특수교육대상자·다문화학생·탈북학생 여부"
       ]
     },
     "form12_investigation_report": {
@@ -72,7 +88,11 @@
         "DAMAGE": "case.damage",
         "EVIDENCE": "case.evidence",
         "INVESTIGATOR_NAME": "case.investigatorName",
-        "INVESTIGATION_DATE": "case.investigationDate"
+        "INVESTIGATION_DATE": "case.investigationDate",
+        "SEPARATION": "case.separation",
+        "SEPARATION_PERIOD": "case.sepPeriod",
+        "VICTIM_RECOVERY_OPINION": "case._hybrid.atoz.victimRecoveryOpinion",
+        "PERP_RECOVERY_OPINION": "case._hybrid.atoz.perpRecoveryOpinion"
       }
     },
     "form18_self_resolution": {
