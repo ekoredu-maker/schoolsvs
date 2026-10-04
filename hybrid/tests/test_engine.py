@@ -67,7 +67,7 @@ def form10_complete() -> dict:
 
 def profile_case() -> dict:
     data = form10_complete()
-    data["_hybrid"]["studentProfileSchemaVersion"] = "cb-atoz-2026-v0.10"
+    data["_hybrid"]["studentProfileSchemaVersion"] = "cb-atoz-2026-v0.15"
     data["_hybrid"]["studentProfiles"] = [
         {
             "profileId": "victim-0",
@@ -83,6 +83,7 @@ def profile_case() -> dict:
             "guardianContact": "010-0000-0001",
             "guardianNoticeAt": "2026-10-04T10:10",
             "guardianNoticeMethod": "유선",
+            "recoveryGuidance": "O",
             "relatedSchoolCaseNo": "",
             "athlete": False,
             "disabled": False,
@@ -104,6 +105,7 @@ def profile_case() -> dict:
             "guardianContact": "010-0000-0002",
             "guardianNoticeAt": "2026-10-04T10:20",
             "guardianNoticeMethod": "유선",
+            "recoveryGuidance": "X",
             "relatedSchoolCaseNo": "",
             "athlete": True,
             "disabled": False,
@@ -242,6 +244,13 @@ class StudentProfileTests(unittest.TestCase):
         self.assertLess(ready["score"], 100)
         self.assertIn("보호자 통보일시", ready["missing"][0]["fields"])
 
+    def test_profile_readiness_detects_missing_recovery_guidance(self):
+        data = profile_case()
+        data["_hybrid"]["studentProfiles"][0]["recoveryGuidance"] = ""
+        ready = profile_readiness(data)
+        self.assertFalse(ready["ready"])
+        self.assertIn("관계회복 프로그램 안내여부", ready["missing"][0]["fields"])
+
     def test_consent_readiness_requires_guardian_name(self):
         data = profile_case()
         data["_hybrid"]["studentProfiles"][1]["guardianName"] = ""
@@ -249,12 +258,14 @@ class StudentProfileTests(unittest.TestCase):
         self.assertFalse(ready["ready"])
         self.assertTrue(any("보호자성명" in x["fields"] for x in ready["missing"]))
 
-    def test_form10_rows_include_role_notice_and_flags(self):
+    def test_form10_rows_include_role_notice_flags_and_guidance(self):
         rows = form10_rows(profile_case())
         self.assertIn("피해관련", rows)
         self.assertIn("가해관련", rows)
         self.assertIn("유선", rows)
         self.assertIn("학생선수", rows)
+        self.assertIn("○", rows)
+        self.assertIn("X", rows)
 
     def test_document_context_exposes_reusable_rows(self):
         context = document_context(profile_case())
