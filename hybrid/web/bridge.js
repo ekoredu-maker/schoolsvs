@@ -9,10 +9,20 @@
   const restoreBtn = document.getElementById('restoreBtn');
   const panelSummary = document.getElementById('panelSummary');
   const panelOutput = document.getElementById('panelOutput');
+  const workflowDock = document.getElementById('workflowDock');
+  const dockToggle = document.getElementById('dockToggle');
+  const dockCaseLabel = document.getElementById('dockCaseLabel');
+  const stageTrack = document.getElementById('stageTrack');
+  const dockStage = document.getElementById('dockStage');
+  const dockCompletion = document.getElementById('dockCompletion');
+  const dockDeadline = document.getElementById('dockDeadline');
+  const dockNext = document.getElementById('dockNext');
 
   let engineOnline = false;
   let syncTimer = null;
+  let navTimer = null;
   let patchInstalled = false;
+  let lastFingerprint = '';
 
   async function api(path, options = {}) {
     const res = await fetch(path, {
@@ -31,21 +41,40 @@
     syncText.textContent = text || (ok ? 'SQLite 동기화 사용' : '기존 localStorage만 사용');
   }
 
+  function parseStorage(ls, key, fallback) {
+    try {
+      const raw = ls.getItem(PREFIX + key);
+      return raw ? JSON.parse(raw) : fallback;
+    } catch (_) { return fallback; }
+  }
+
   function readLegacyState() {
     const w = frame.contentWindow;
     if (!w) return null;
     const ls = w.localStorage;
-    const parse = (key, fallback) => {
-      try {
-        const raw = ls.getItem(PREFIX + key);
-        return raw ? JSON.parse(raw) : fallback;
-      } catch (_) { return fallback; }
-    };
     return {
-      cases: parse('cases', []),
-      counter: parse('counter', 1),
-      settings: parse('settings', {})
+      cases: parseStorage(ls, 'cases', []),
+      counter: parseStorage(ls, 'counter', 1),
+      settings: parseStorage(ls, 'settings', {})
     };
+  }
+
+  function currentCaseFromLegacy() {
+    const w = frame.contentWindow;
+    if (!w) return null;
+    try {
+      const doc = w.document;
+      const formPage = doc.getElementById('page-newcase');
+      if (formPage?.classList.contains('active') && typeof w.getFormData === 'function') {
+        const data = w.getFormData();
+        if (data && (data.caseNo || data.recvAt || data.summary)) return data;
+      }
+    } catch (_) {}
+
+    const state = readLegacyState();
+    const cases = state?.cases || [];
+    if (!cases.length) return null;
+    return cases.find(c => c.status !== '종결') || cases[0];
   }
 
   async function syncLegacyState(reason = '자동 동기화') {
@@ -63,7 +92,10 @@
 
   function scheduleSync(reason) {
     clearTimeout(syncTimer);
-    syncTimer = setTimeout(() => syncLegacyState(reason), 250);
+    syncTimer = setTimeout(async () => {
+      await syncLegacyState(reason);
+      scheduleNavigatorRefresh(true);
+    }, 250);
   }
 
   function installStoragePatch() {
@@ -93,6 +125,17 @@
     patchInstalled = true;
   }
 
+  function installFrameActivityWatch() {
+    const w = frame.contentWindow;
+    if (!w) return;
+    try {
+      const doc = w.document;
+      ['input','change','click'].forEach(evt => {
+        doc.addEventListener(evt, () => scheduleNavigatorRefresh(false), {passive:true});
+      });
+    } catch (_) {}
+  }
+
   async function healthCheck() {
     try {
       const h = await api('/api/health');
@@ -103,6 +146,7 @@
       setStatus(false, 'Python 서버 미연결 · 기존 웹 기능은 계속 사용 가능');
       panelSummary.textContent = 'Python 엔진과 연결되지 않았습니다.';
       panelOutput.textContent = '기존 HTML/JavaScript 기능은 그대로 사용할 수 있습니다. 하이브리드 실행기로 시작했는지 확인하세요.';
+      renderNavigatorOffline();
       return false;
     }
   }
@@ -166,6 +210,102 @@
     return '[다음 업무]\n' + actions.map((x, i) => `${i+1}. ${x}`).join('\n');
   }
 
+  function deadlinePriority(items) {
+    const active = (items || []).filter(x => x.status === 'overdue' || x.status === 'pending');
+    active.sort((a,b) => (a.remainingMinutes ?? 999999) - (b.remainingMinutes ?? 999999));
+    return active[0] || null;
+  }
+
+  function setDockValue(el, text, tone='') {
+    el.textContent = text;
+    el.className = `dockValue${tone ? ' '+tone : ''}`;
+  }
+
+  function renderStages(steps) {
+    const fallback = ['접수','초기대응','사실조사','전담기구','심의','조치이행','종결'].map(name => ({name,state:'pending'}));
+    const list = steps?.length ? steps : fallback;
+    stageTrack.innerHTML = list.map(s => `<div class="stage ${s.state || 'pending'}">${s.name}</div>`).join('');
+  }
+
+  function renderNavigatorOffline() {
+    dockCaseLabel.textContent = 'Python 엔진 미연결 · 기존 화면은 계속 사용 가능합니다.';
+    renderStages([]);
+    setDockValue(dockStage, '웹 단독 모드', 'warn');
+    setDockValue(dockCompletion, '-');
+    setDockValue(dockDeadline, 'Python 연결 후 계산', 'warn');
+    setDockValue(dockNext, '하이브리드 실행기로 프로그램을 시작하세요.', 'warn');
+  }
+
+  function renderNavigatorEmpty() {
+    dockCaseLabel.textContent = '진행 중인 사안이 없습니다.';
+    renderStages([]);
+    setDockValue(dockStage, '대기');
+    setDockValue(dockCompletion, '-');
+    setDockValue(dockDeadline, '없음', 'ok');
+    setDockValue(dockNext, '신규 사안을 접수하면 업무 절차를 안내합니다.');
+  }
+
+  function renderNavigator(data, result) {
+    const wf = result.workflow || {};
+    const validation = result.validation || {};
+    const deadlines = wf.deadlines || result.deadlines || [];
+    const near = deadlinePriority(deadlines);
+    const errors = validation.errors || [];
+    const warnings = validation.warnings || [];
+    const actions = wf.nextActions || [];
+
+    dockCaseLabel.textContent = `${data.caseNo || '번호 미정'} · ${data.status || '상태 미정'}`;
+    renderStages(wf.steps || []);
+    setDockValue(dockStage, wf.stage || '-');
+    const completion = wf.completion;
+    setDockValue(dockCompletion, typeof completion === 'number' ? `${completion}%` : '-');
+
+    if (near) {
+      if (near.status === 'overdue') setDockValue(dockDeadline, `${near.label} · 기한 경과`, 'danger');
+      else {
+        const hrs = Math.max(0, Math.floor((near.remainingMinutes || 0) / 60));
+        setDockValue(dockDeadline, `${near.label} · 약 ${hrs}시간 남음`, hrs <= 6 ? 'warn' : '');
+      }
+    } else {
+      setDockValue(dockDeadline, '현재 임박 기한 없음', 'ok');
+    }
+
+    let next = actions[0] || '현재 단계의 기록을 확인하세요.';
+    let tone = '';
+    if (errors.length) {
+      next = `필수 누락 ${errors.length}건 · ${errors[0].message || '입력사항 확인'}`;
+      tone = 'danger';
+    } else if (near?.status === 'overdue') {
+      next = actions.find(x => String(x).includes('기한')) || next;
+      tone = 'danger';
+    } else if (warnings.length) {
+      next = `확인 필요 ${warnings.length}건 · ${warnings[0].message || '주의사항 확인'}`;
+      tone = 'warn';
+    }
+    setDockValue(dockNext, next, tone);
+  }
+
+  async function refreshNavigator(force=false) {
+    if (!engineOnline) return renderNavigatorOffline();
+    const data = currentCaseFromLegacy();
+    if (!data) return renderNavigatorEmpty();
+    const fingerprint = JSON.stringify([data.id,data.caseNo,data.status,data.recvAt,data.officeReport,data.officeDate,data.separation,data.sepPeriod,data.summary,data.updatedAt]);
+    if (!force && fingerprint === lastFingerprint) return;
+    lastFingerprint = fingerprint;
+    try {
+      const result = await api('/api/validate', {method:'POST', body:JSON.stringify(data)});
+      renderNavigator(data, result);
+    } catch (e) {
+      dockCaseLabel.textContent = '업무 내비게이션 계산 실패';
+      setDockValue(dockNext, e.message, 'danger');
+    }
+  }
+
+  function scheduleNavigatorRefresh(force=false) {
+    clearTimeout(navTimer);
+    navTimer = setTimeout(() => refreshNavigator(force), 180);
+  }
+
   async function validateCurrentCase() {
     panel.classList.add('open');
     if (!engineOnline) {
@@ -173,9 +313,8 @@
       return;
     }
     try {
-      const w = frame.contentWindow;
-      if (!w || typeof w.getFormData !== 'function') throw new Error('현재 화면에서 사안 입력 폼을 읽을 수 없습니다.');
-      const data = w.getFormData();
+      const data = currentCaseFromLegacy();
+      if (!data) throw new Error('검증할 사안이 없습니다.');
       const result = await api('/api/validate', {method:'POST', body:JSON.stringify(data)});
       const wf = result.workflow || {};
       const completion = wf.completion ?? '-';
@@ -217,12 +356,19 @@
   panelBtn.addEventListener('click', () => panel.classList.toggle('open'));
   validateBtn.addEventListener('click', validateCurrentCase);
   restoreBtn.addEventListener('click', restoreFromSqlite);
+  dockToggle.addEventListener('click', () => {
+    const collapsed = workflowDock.classList.toggle('collapsed');
+    dockToggle.textContent = collapsed ? '펼치기' : '접기';
+  });
 
   frame.addEventListener('load', async () => {
     installStoragePatch();
+    installFrameActivityWatch();
     await healthCheck();
     await initialSync();
+    await refreshNavigator(true);
   });
 
-  healthCheck();
+  healthCheck().then(() => scheduleNavigatorRefresh(true));
+  setInterval(() => scheduleNavigatorRefresh(false), 30000);
 })();
