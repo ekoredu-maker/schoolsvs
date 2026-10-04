@@ -25,7 +25,7 @@
     panel.className = 'studentPanel';
     panel.innerHTML = `
       <div class="studentHead"><h3>관련학생 상세정보</h3><button id="studentClose" class="studentClose">닫기</button></div>
-      <div class="studentNote">기존 화면의 피해·가해관련학생 명단을 기준으로 서식10·12·20·21·22에서 재사용할 상세정보를 저장합니다. 학생 이름과 역할은 기존 사안 명단을 기준으로 하며, 이름 변경은 기존 화면에서 하세요.</div>
+      <div class="studentNote">기존 화면의 피해·가해관련학생 명단을 기준으로 서식10·12·20·21·22에서 재사용할 상세정보를 저장합니다. 2026 서식10에 맞춰 학생별 보호자 통보와 관계회복 프로그램 안내여부도 함께 관리합니다. 학생 이름과 역할 변경은 기존 화면에서 하세요.</div>
       <div id="studentList"></div>
       <div class="studentFoot"><button id="studentSave" class="studentSave">현재 사안에 저장</button><span id="studentStatus" class="studentStatus">사안을 선택하세요.</span></div>
     `;
@@ -99,6 +99,7 @@
         guardianContact: old.guardianContact || item.guardianContact || item.parentContact || '',
         guardianNoticeAt: old.guardianNoticeAt || '',
         guardianNoticeMethod: old.guardianNoticeMethod || '',
+        recoveryGuidance: old.recoveryGuidance || '',
         relatedSchoolCaseNo: old.relatedSchoolCaseNo || '',
         athlete: !!old.athlete,
         disabled: !!old.disabled,
@@ -135,6 +136,7 @@
           ${field('relatedSchoolCaseNo','공동사안 관련학교 사안번호',p.relatedSchoolCaseNo)}
           ${field('guardianNoticeAt','보호자 통보 일시',p.guardianNoticeAt,'datetime-local')}
           ${field('guardianNoticeMethod','보호자 통보 방법',p.guardianNoticeMethod)}
+          <div class="studentField"><label>관계회복 프로그램 안내여부</label><select data-field="recoveryGuidance"><option value="">선택</option><option value="O" ${p.recoveryGuidance==='O'||p.recoveryGuidance==='○'?'selected':''}>안내 ○</option><option value="X" ${p.recoveryGuidance==='X'?'selected':''}>미안내 X</option></select></div>
           <div class="studentChecks">
             <label><input type="checkbox" data-flag="athlete" ${p.athlete?'checked':''}> 학생선수</label>
             <label><input type="checkbox" data-flag="disabled" ${p.disabled?'checked':''}> 장애학생</label>
@@ -161,7 +163,7 @@
   }
 
   function readiness(profiles){
-    const required = ['schoolName','grade','classNo','number','gender','guardianNoticeAt','guardianNoticeMethod'];
+    const required = ['schoolName','grade','classNo','number','gender','guardianNoticeAt','guardianNoticeMethod','recoveryGuidance'];
     const total = profiles.length * required.length;
     const filled = profiles.reduce((sum,p) => sum + required.filter(k => String(p[k] || '').trim()).length, 0);
     return total ? Math.round(filled / total * 100) : 0;
@@ -180,7 +182,7 @@
       ...cases[idx],
       _hybrid: {
         ...(cases[idx]._hybrid || {}),
-        studentProfileSchemaVersion: 'cb-atoz-2026-v0.10',
+        studentProfileSchemaVersion: 'cb-atoz-2026-v0.15',
         studentProfiles: profiles,
       },
       updatedAt: new Date().toISOString(),
