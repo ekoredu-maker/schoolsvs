@@ -65,6 +65,34 @@ jobs:
           & $python 'dist\SchoolSVS_Portable\hybrid\tests\test_server_runtime.py'
           if ($LASTEXITCODE -ne 0) { throw 'Dynamic-port smoke test failed.' }
 
+      - name: Remove development-only files
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $root = Join-Path $PWD 'dist\SchoolSVS_Portable'
+          $tests = Join-Path $root 'hybrid\tests'
+          if (Test-Path $tests) { Remove-Item $tests -Recurse -Force }
+          Get-ChildItem $root -Recurse -Directory -Filter '__pycache__' | Remove-Item -Recurse -Force
+          Get-ChildItem $root -Recurse -File -Filter '*.pyc' | Remove-Item -Force
+
+      - name: Verify distribution contents
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $root = Join-Path $PWD 'dist\SchoolSVS_Portable'
+          $required = @(
+            (Join-Path $root 'SchoolSVS_실행.bat'),
+            (Join-Path $root 'index.html'),
+            (Join-Path $root 'hybrid\run_schoolsvs.bat'),
+            (Join-Path $root 'hybrid\PORTABLE_README.txt'),
+            (Join-Path $root 'hybrid\runtime\python.exe'),
+            (Join-Path $root 'hybrid\app\main.py')
+          )
+          foreach ($item in $required) {
+            if (!(Test-Path $item)) { throw "Missing portable file: $item" }
+          }
+          if (Test-Path (Join-Path $root 'hybrid\tests')) { throw 'Tests directory leaked into distribution.' }
+
       - name: Create portable ZIP
         shell: pwsh
         run: |
