@@ -20,6 +20,7 @@ ANALYSIS_DIR = TEMPLATE_DIR / "_analysis"
 ARCHIVE_DIR = TEMPLATE_DIR / "_archive"
 BUILT_DIR = TEMPLATE_DIR / "_built"
 BUILD_REPORT_DIR = TEMPLATE_DIR / "_build_reports"
+SOURCE_BUNDLE_DIR = TEMPLATE_DIR / "_source_bundles"
 REGISTRY_PATH = Path(__file__).with_name("document_registry.json")
 TOKEN_RE = re.compile(r"\{\{\s*([A-Za-z0-9_.\-]+)\s*\}\}")
 
@@ -64,6 +65,7 @@ def list_documents() -> list[dict[str, Any]]:
         template_path = TEMPLATE_DIR / template_name if template_name else None
         built_path = BUILT_DIR / template_name if template_name else None
         analysis_path = ANALYSIS_DIR / f"{key}.json"
+        structure_path = ANALYSIS_DIR / f"{key}_structure.json"
         build_report = BUILD_REPORT_DIR / f"{key}.json"
         docs.append({
             "key": key,
@@ -75,6 +77,7 @@ def list_documents() -> list[dict[str, Any]]:
             "builtTemplateReady": bool(built_path and built_path.exists()),
             "mappingReady": bool(item.get("fields")),
             "analysisReady": analysis_path.exists(),
+            "structureProfileReady": structure_path.exists(),
             "buildReportReady": build_report.exists(),
         })
     return docs
@@ -258,6 +261,13 @@ def get_saved_analysis(document_key: str) -> dict[str, Any] | None:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def get_structure_report(document_key: str) -> dict[str, Any] | None:
+    path = ANALYSIS_DIR / f"{document_key}_structure.json"
+    if not path.exists():
+        return None
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
 def register_template(document_key: str, payload: bytes, original_name: str = "") -> dict[str, Any]:
     """공식 원본 HWPX를 등록한다. 생성용(_built) 템플릿은 별도로 제작한다."""
     doc = _document_definition(document_key)
@@ -266,6 +276,11 @@ def register_template(document_key: str, payload: bytes, original_name: str = ""
         raise ValueError("레지스트리에 템플릿 파일명이 없습니다.")
     if not payload:
         raise ValueError("업로드된 HWPX 파일이 비어 있습니다.")
+
+    source_meta = None
+    if document_key == "form10_case_report":
+        from chungbuk_form10 import prepare_form10_upload
+        payload, source_meta = prepare_form10_upload(payload, original_name, SOURCE_BUNDLE_DIR)
 
     TEMPLATE_DIR.mkdir(parents=True, exist_ok=True)
     with tempfile.NamedTemporaryFile(suffix=".hwpx", delete=False) as tmp:
@@ -283,11 +298,16 @@ def register_template(document_key: str, payload: bytes, original_name: str = ""
             archived = ARCHIVE_DIR / f"{target.stem}_{stamp}{target.suffix}"
             shutil.copy2(target, archived)
         shutil.copy2(tmp_path, target)
-        # 공식 원본이 바뀌면 과거 원본에서 만든 생성용 템플릿을 사용하지 않는다.
         (BUILT_DIR / template_name).unlink(missing_ok=True)
         (BUILD_REPORT_DIR / f"{document_key}.json").unlink(missing_ok=True)
         analysis = save_analysis(document_key)
-        return {
+        if source_meta:
+            ANALYSIS_DIR.mkdir(parents=True, exist_ok=True)
+            (ANALYSIS_DIR / f"{document_key}_structure.json").write_text(
+                json.dumps(source_meta.get("structure") or {}, ensure_ascii=False, indent=2),
+                encoding="utf-8",
+            )
+        result = {
             "documentKey": document_key,
             "template": template_name,
             "originalName": original_name,
@@ -295,6 +315,9 @@ def register_template(document_key: str, payload: bytes, original_name: str = ""
             "builtTemplateInvalidated": True,
             "analysis": analysis,
         }
+        if source_meta:
+            result["sourcePreparation"] = source_meta
+        return result
     finally:
         tmp_path.unlink(missing_ok=True)
 
