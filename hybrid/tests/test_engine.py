@@ -10,7 +10,7 @@ APP_DIR = Path(__file__).resolve().parents[1] / "app"
 sys.path.insert(0, str(APP_DIR))
 
 import storage  # noqa: E402
-from workflow import calculate_deadlines, validate_case, workflow_state  # noqa: E402
+from workflow import calculate_deadlines, route_state, stage_gates, validate_case, workflow_state  # noqa: E402
 
 
 SAMPLE = {
@@ -26,6 +26,17 @@ SAMPLE = {
     "victims": [{"name": "피해학생"}],
     "perps": [{"name": "가해학생"}],
 }
+
+
+def initial_complete() -> dict:
+    data = dict(SAMPLE)
+    data.update({
+        "separation": "즉시분리 미시행",
+        "sepReason": "피해관련학생이 분리 조치에 반대 의사를 표명한 경우",
+        "officeReport": "보고완료",
+        "officeDate": "2026-10-05",
+    })
+    return data
 
 
 class WorkflowTests(unittest.TestCase):
@@ -47,12 +58,35 @@ class WorkflowTests(unittest.TestCase):
         self.assertFalse(result["ok"])
         self.assertTrue(any(x["field"] == "closedDate" for x in result["errors"]))
 
-    def test_workflow_stage_mapping(self):
+    def test_declared_stage_cannot_skip_initial_response_gate(self):
         data = dict(SAMPLE)
         data["status"] = "조사중"
         result = workflow_state(data)
-        self.assertEqual(result["stage"], "사실조사")
-        self.assertIsInstance(result["completion"], int)
+        self.assertEqual(result["declaredStage"], "사실조사")
+        self.assertEqual(result["stage"], "초기대응")
+        self.assertTrue(any(x["field"] == "status" for x in result["validation"]["warnings"]))
+
+    def test_stage_gates_progress_in_order(self):
+        gates = stage_gates(initial_complete())
+        self.assertTrue(gates[0]["complete"])
+        self.assertTrue(gates[1]["complete"])
+        self.assertEqual(gates[2]["state"], "done")  # 조사관 미사용 시 현재 입력구조상 선행조건 없음
+        self.assertEqual(gates[3]["state"], "current")
+        self.assertIn("전담기구 개최일", gates[3]["missing"])
+
+    def test_route_disabled_before_committee(self):
+        route = route_state(initial_complete())
+        self.assertFalse(route["enabled"])
+        self.assertIsNone(route["selected"])
+
+    def test_route_is_human_selected_after_committee(self):
+        data = initial_complete()
+        data["committeeDate"] = "2026-10-08"
+        data["_hybrid"] = {"route": "self_resolution_review"}
+        route = route_state(data)
+        self.assertTrue(route["enabled"])
+        self.assertTrue(route["requiresHumanDecision"])
+        self.assertEqual(route["selectedLabel"], "학교장 자체해결 검토")
 
     def test_24_hour_separation_deadline(self):
         items = calculate_deadlines(dict(SAMPLE), now=datetime.fromisoformat("2026-10-05T08:00"))
