@@ -11,6 +11,8 @@ from pathlib import Path
 from typing import Any
 from xml.etree import ElementTree as ET
 
+from student_profiles import document_context as student_document_context
+
 BASE_DIR = Path(__file__).resolve().parents[1]
 TEMPLATE_DIR = BASE_DIR / "templates"
 OUTPUT_DIR = BASE_DIR / "output"
@@ -81,7 +83,7 @@ def _first_name(items: Any) -> str:
 
 def build_context(case: dict[str, Any], settings: dict[str, Any] | None = None) -> dict[str, str]:
     settings = settings or {}
-    return {
+    context = {
         "case.id": str(case.get("id") or ""),
         "case.caseNo": str(case.get("caseNo") or ""),
         "case.recvAt": str(case.get("recvAt") or ""),
@@ -115,6 +117,8 @@ def build_context(case: dict[str, Any], settings: dict[str, Any] | None = None) 
         "school.principal": str(settings.get("principal") or ""),
         "school.vicePrincipal": str(settings.get("vicePrincipal") or ""),
     }
+    context.update(student_document_context(case))
+    return context
 
 
 def _normalize_mapping(case: dict[str, Any], settings: dict[str, Any], fields: dict[str, Any]) -> dict[str, str]:
@@ -132,11 +136,20 @@ def _normalize_mapping(case: dict[str, Any], settings: dict[str, Any], fields: d
                 value = spec
         elif isinstance(spec, dict):
             source = str(spec.get("source") or "")
-            value = base.get(source, _get_path(case, source.removeprefix("case."), ""))
+            if source in base:
+                value = base.get(source, "")
+            elif source.startswith("case."):
+                value = _get_path(case, source.removeprefix("case."), "")
+            elif source.startswith("settings."):
+                value = _get_path(settings, source.removeprefix("settings."), "")
+            else:
+                value = ""
             if spec.get("default") and not value:
                 value = spec.get("default")
         else:
             value = ""
+        if isinstance(value, bool):
+            value = "O" if value else ""
         values[token] = "" if value is None else str(value)
     return values
 
