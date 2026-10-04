@@ -1,0 +1,95 @@
+{
+  "profileVersion": "0.13.0",
+  "documentKey": "form10_case_report",
+  "structuralReference": {
+    "year": 2025,
+    "title": "2025. 학교폭력 사안처리 세부설명 A to Z (서식모음집)",
+    "form": "[서식10] 학교폭력 사안접수 보고서",
+    "status": "verified_from_hwpx"
+  },
+  "currentGuidanceReference": {
+    "year": 2026,
+    "title": "2026. 학교폭력 사안처리 세부설명 A to Z (Q&A 포함)",
+    "formPage": 40,
+    "status": "verified_from_pdf_text_only"
+  },
+  "pageMarker": "<서식10>",
+  "mainTable": {
+    "matchTexts": ["학교명", "접수일시", "타학교 관련 여부", "전담조사관"],
+    "expectedRows": 20,
+    "expectedCols": 15,
+    "verifiedTableId2025": "1909429768"
+  },
+  "verifiedCells2025": {
+    "caseNo": {"row": 0, "col": 0, "note": "라벨과 예시값이 같은 셀"},
+    "schoolName": {"row": 1, "col": 1},
+    "managerLabel": {"row": 1, "col": 3, "expectedText": "교장"},
+    "managerName": {"row": 1, "col": 8},
+    "teacherName": {"row": 1, "col": 14},
+    "managerMobile": {"row": 2, "col": 8},
+    "teacherMobile": {"row": 2, "col": 14},
+    "receivedAt": {"row": 3, "col": 1},
+    "reporter": {"row": 4, "col": 1},
+    "recognitionPath": {"row": 4, "col": 11},
+    "receiver": {"row": 5, "col": 1},
+    "investigationMode": {"row": 6, "col": 1},
+    "no2Action": {"row": 7, "col": 1},
+    "separationImplemented": {"row": 9, "col": 1},
+    "separationNotImplemented": {"row": 9, "col": 7},
+    "separationPeriod": {"row": 10, "col": 1},
+    "separationExceptions": {"row": 10, "col": 7},
+    "factSummary": {"row": 11, "col": 1, "nestedTableId2025": "1909429770"},
+    "studentHeaderSchool": {"row": 12, "col": 1},
+    "studentExampleRow1School": {"row": 13, "col": 1},
+    "studentExampleRow2School": {"row": 14, "col": 1},
+    "otherMatters": {"row": 15, "col": 1},
+    "otherSchoolName": {"row": 16, "col": 3},
+    "otherSchoolNotice": {"row": 17, "col": 3},
+    "victimInterviewTime": {"row": 18, "col": 3},
+    "perpInterviewTime": {"row": 19, "col": 3}
+  },
+  "nestedFactTable2025": {
+    "verifiedTableId": "1909429770",
+    "expectedRows": 5,
+    "expectedCols": 2,
+    "cells": {
+      "incidentDate": {"row": 1, "col": 1},
+      "incidentPlace": {"row": 2, "col": 1},
+      "summary": {"row": 3, "col": 1},
+      "violenceType": {"row": 4, "col": 1}
+    }
+  },
+  "observed2026Differences": [
+    {
+      "key": "managerTitle",
+      "reference2025": "교장",
+      "guidance2026": "교감",
+      "status": "confirmed_difference"
+    },
+    {
+      "key": "violenceTypeOptions",
+      "reference2025": "폭행·언어폭력·따돌림·강요·사이버폭력·금품갈취·기타 + 성폭력 별도",
+      "guidance2026": "신체폭력·언어폭력·금품갈취·강요·따돌림·성폭력·사이버폭력·기타·아동학대",
+      "status": "confirmed_difference"
+    },
+    {
+      "key": "recoveryProgramGuide",
+      "reference2025": "관련학생 표에 별도 안내여부 열 없음",
+      "guidance2026": "관계회복 프로그램 안내여부 열 있음",
+      "status": "confirmed_difference"
+    },
+    {
+      "key": "recoveryProgramOpinions",
+      "reference2025": "면담 가능시간에서 서식 종료",
+      "guidance2026": "피해·가해 관련학생 관계회복 프로그램 의견 항목 추가",
+      "status": "confirmed_difference"
+    },
+    {
+      "key": "offCampusExperienceSeparationException",
+      "reference2025": "학교장 허가 교외체험학습 예외 문구 있음",
+      "guidance2026": "PDF 추출문에서는 해당 문구가 확인되지 않음",
+      "status": "needs_2026_hwpx_confirmation"
+    }
+  ],
+  "productionRule": "2025 HWPX는 구조 실증용 기준이다. 2026 PDF에서 확인된 차이를 반영하되, 2026 공식 HWPX 구조 확인 전에는 2026 최종서식으로 확정하지 않는다."
+}
