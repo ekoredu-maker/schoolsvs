@@ -10,16 +10,16 @@ from pathlib import Path
 from urllib.parse import unquote, urlparse
 
 from storage import delete_case, get_case, get_value, init_db, list_cases, set_value, upsert_case
-from workflow import validate_case, workflow_state
+from workflow import calculate_deadlines, load_rules, validate_case, workflow_state
 
 ROOT = Path(__file__).resolve().parents[2]
 HOST = "127.0.0.1"
 PORT = int(os.environ.get("SCHOOLSVS_PORT", "8768"))
-VERSION = "0.2.0"
+VERSION = "0.3.0"
 
 
 class Handler(BaseHTTPRequestHandler):
-    server_version = "SchoolSVS-Hybrid/0.2"
+    server_version = "SchoolSVS-Hybrid/0.3"
 
     def _json(self, payload, status=200):
         body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
@@ -53,7 +53,10 @@ class Handler(BaseHTTPRequestHandler):
         path = unquote(parsed.path)
 
         if path == "/api/health":
-            return self._json({"ok": True, "engine": "python", "version": VERSION, "port": PORT})
+            rules = load_rules()
+            return self._json({"ok": True, "engine": "python", "version": VERSION, "port": PORT, "rulesVersion": rules.get("version")})
+        if path == "/api/rules":
+            return self._json({"ok": True, "rules": load_rules()})
         if path == "/api/cases":
             return self._json({"ok": True, "cases": list_cases()})
         if path.startswith("/api/cases/"):
@@ -94,11 +97,11 @@ class Handler(BaseHTTPRequestHandler):
             if path == "/api/cases":
                 result = validate_case(data)
                 if not result["ok"]:
-                    return self._json({"ok": False, "validation": result}, 400)
+                    return self._json({"ok": False, "validation": result, "workflow": workflow_state(data)}, 400)
                 upsert_case(data)
-                return self._json({"ok": True, "case": data, "validation": result})
+                return self._json({"ok": True, "case": data, "validation": result, "workflow": workflow_state(data)})
             if path == "/api/validate":
-                return self._json({"ok": True, "validation": validate_case(data), "workflow": workflow_state(data)})
+                return self._json({"ok": True, "validation": validate_case(data), "workflow": workflow_state(data), "deadlines": calculate_deadlines(data)})
             if path == "/api/state":
                 cases = data.get("cases") or []
                 incoming_ids = {str(case.get("id")) for case in cases if case.get("id")}
