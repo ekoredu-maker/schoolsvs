@@ -2,13 +2,11 @@ from __future__ import annotations
 
 import json
 import re
-import shutil
 import tempfile
 import zipfile
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
-from xml.etree import ElementTree as ET
 
 BASE_DIR = Path(__file__).resolve().parents[1]
 TEMPLATE_DIR = BASE_DIR / "templates"
@@ -69,7 +67,7 @@ def _first_name(items: Any) -> str:
 
 def build_context(case: dict[str, Any], settings: dict[str, Any] | None = None) -> dict[str, str]:
     settings = settings or {}
-    ctx: dict[str, str] = {
+    return {
         "case.id": str(case.get("id") or ""),
         "case.caseNo": str(case.get("caseNo") or ""),
         "case.recvAt": str(case.get("recvAt") or ""),
@@ -103,7 +101,6 @@ def build_context(case: dict[str, Any], settings: dict[str, Any] | None = None) 
         "school.principal": str(settings.get("principal") or ""),
         "school.vicePrincipal": str(settings.get("vicePrincipal") or ""),
     }
-    return ctx
 
 
 def _normalize_mapping(case: dict[str, Any], settings: dict[str, Any], fields: dict[str, Any]) -> dict[str, str]:
@@ -130,40 +127,17 @@ def _normalize_mapping(case: dict[str, Any], settings: dict[str, Any], fields: d
     return values
 
 
-def _replace_text_nodes(xml_bytes: bytes, replacements: dict[str, str]) -> tuple[bytes, set[str], set[str]]:
-    try:
-        root = ET.fromstring(xml_bytes)
-    except ET.ParseError:
-        text = xml_bytes.decode("utf-8", errors="ignore")
-        replaced: set[str] = set()
-        for token, value in replacements.items():
-            marker = "{{" + token + "}}"
-            if marker in text:
-                text = text.replace(marker, value)
-                replaced.add(token)
-        remaining = set(TOKEN_RE.findall(text))
-        return text.encode("utf-8"), replaced, remaining
-
+def _replace_raw_xml(xml_bytes: bytes, replacements: dict[str, str]) -> tuple[bytes, set[str], set[str]]:
+    """원본 XML 구조를 다시 직렬화하지 않고 토큰 문자열만 최소 치환한다."""
+    text = xml_bytes.decode("utf-8", errors="strict")
     replaced: set[str] = set()
-    for elem in root.iter():
-        if elem.text:
-            original = elem.text
-            for token, value in replacements.items():
-                marker = "{{" + token + "}}"
-                if marker in elem.text:
-                    elem.text = elem.text.replace(marker, value)
-                    replaced.add(token)
-            if elem.text != original:
-                pass
-        if elem.tail:
-            for token, value in replacements.items():
-                marker = "{{" + token + "}}"
-                if marker in elem.tail:
-                    elem.tail = elem.tail.replace(marker, value)
-                    replaced.add(token)
-    serialized = ET.tostring(root, encoding="utf-8", xml_declaration=True)
-    remaining = set(TOKEN_RE.findall(serialized.decode("utf-8", errors="ignore")))
-    return serialized, replaced, remaining
+    for token, value in replacements.items():
+        marker = "{{" + token + "}}"
+        if marker in text:
+            text = text.replace(marker, value)
+            replaced.add(token)
+    remaining = set(TOKEN_RE.findall(text))
+    return text.encode("utf-8"), replaced, remaining
 
 
 def inspect_template(template_path: Path) -> dict[str, Any]:
@@ -185,7 +159,23 @@ def inspect_template(template_path: Path) -> dict[str, Any]:
         "xmlFiles": xml_files,
         "tokens": sorted(tokens),
         "tokenCount": len(tokens),
+        "mimetypeStored": (
+            "mimetype" in zf.namelist() if False else None
+        ),
     }
+
+
+def _write_hwpx_package(source_dir: Path, output_path: Path) -> None:
+    files = [p for p in source_dir.rglob("*") if p.is_file()]
+    mimetype = source_dir / "mimetype"
+    with zipfile.ZipFile(output_path, "w") as out:
+        if mimetype.exists():
+            out.write(mimetype, "mimetype", compress_type=zipfile.ZIP_STORED)
+        for path in sorted(files):
+            relative = path.relative_to(source_dir).as_posix()
+            if relative == "mimetype":
+                continue
+            out.write(path, relative, compress_type=zipfile.ZIP_DEFLATED)
 
 
 def generate_document(document_key: str, case: dict[str, Any], settings: dict[str, Any] | None = None, output_name: str | None = None) -> DocumentResult:
@@ -219,15 +209,15 @@ def generate_document(document_key: str, case: dict[str, Any], settings: dict[st
             if not path.is_file() or path.suffix.lower() not in {".xml", ".hpf"}:
                 continue
             raw = path.read_bytes()
-            updated, rep, rem = _replace_text_nodes(raw, replacements)
+            try:
+                updated, rep, rem = _replace_raw_xml(raw, replacements)
+            except UnicodeDecodeError:
+                continue
             if rep:
                 path.write_bytes(updated)
                 replaced.update(rep)
             remaining.update(rem)
-        with zipfile.ZipFile(output_path, "w", compression=zipfile.ZIP_DEFLATED) as out:
-            for path in sorted(tmp.rglob("*")):
-                if path.is_file():
-                    out.write(path, path.relative_to(tmp).as_posix())
+        _write_hwpx_package(tmp, output_path)
 
     missing = sorted(token for token in replacements if token not in replaced)
     missing.extend(sorted(token for token in remaining if token not in missing))
