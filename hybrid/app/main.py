@@ -11,6 +11,7 @@ from pathlib import Path
 from urllib.parse import parse_qs, quote, unquote, urlparse
 
 from document_readiness import document_readiness
+from form10_student_rows import apply_student_rows_to_hwpx
 from hwpx_engine import (
     TEMPLATE_DIR,
     generate_document,
@@ -29,11 +30,11 @@ from workflow import calculate_deadlines, load_rules, validate_case, workflow_st
 ROOT = Path(__file__).resolve().parents[2]
 HOST = "127.0.0.1"
 PORT = int(os.environ.get("SCHOOLSVS_PORT", "8768"))
-VERSION = "0.13.0"
+VERSION = "0.15.0"
 
 
 class Handler(BaseHTTPRequestHandler):
-    server_version = "SchoolSVS-Hybrid/0.13"
+    server_version = "SchoolSVS-Hybrid/0.15"
 
     def _json(self, payload, status=200):
         body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
@@ -242,6 +243,9 @@ class Handler(BaseHTTPRequestHandler):
                         "readiness": readiness,
                     }, 409)
                 result = generate_document(key, case, settings=settings, output_name=data.get("outputName"))
+                student_rows = None
+                if key == "form10_case_report":
+                    student_rows = apply_student_rows_to_hwpx(result.output_path, case)
                 relative = result.output_path.relative_to(ROOT).as_posix()
                 return self._json({
                     "ok": True,
@@ -250,6 +254,7 @@ class Handler(BaseHTTPRequestHandler):
                     "downloadUrl": "/" + relative,
                     "replacedTokens": result.replaced_tokens,
                     "missingTokens": result.missing_tokens,
+                    "studentRows": student_rows,
                     "readiness": readiness,
                     "warning": "템플릿 구조 검증 전 시험 생성본입니다." if result.missing_tokens else None,
                 })
