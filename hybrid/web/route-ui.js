@@ -127,4 +127,10 @@
     script.dataset.schoolsvsAtoz = '1';
     document.body.appendChild(script);
   }
+  if (!document.querySelector('script[data-schoolsvs-students]')) {
+    const script = document.createElement('script');
+    script.src = 'student-ui.js';
+    script.dataset.schoolsvsStudents = '1';
+    document.body.appendChild(script);
+  }
 })();
