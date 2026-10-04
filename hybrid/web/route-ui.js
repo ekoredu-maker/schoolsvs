@@ -37,7 +37,7 @@
         const data = w.getFormData();
         const cases = readCases();
         const stored = cases.find(c => c.id === data.id || (data.caseNo && c.caseNo === data.caseNo));
-        return stored ? {...stored, ...data, _hybrid: stored._hybrid || {}} : data;
+        return stored ? {...stored, ...data, _hybrid: {...(stored._hybrid || {}), ...(data._hybrid || {})}} : data;
       }
     } catch (_) {}
     const cases = readCases();
@@ -120,4 +120,11 @@
     } catch (_) {}
   });
   setInterval(refresh, 5000);
+
+  if (!document.querySelector('script[data-schoolsvs-atoz]')) {
+    const script = document.createElement('script');
+    script.src = 'atoz-ui.js';
+    script.dataset.schoolsvsAtoz = '1';
+    document.body.appendChild(script);
+  }
 })();
