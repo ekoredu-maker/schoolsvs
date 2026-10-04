@@ -13,24 +13,23 @@ from urllib.parse import parse_qs, quote, unquote, urlparse
 from hwpx_engine import (
     TEMPLATE_DIR,
     generate_document,
-    get_saved_analysis,
     inspect_template,
     list_documents,
     load_registry,
     register_template,
-    save_analysis,
 )
+from mapping_service import build_mapping_workspace, save_mapping, source_catalog
 from storage import delete_case, get_case, get_value, init_db, list_cases, set_value, upsert_case
 from workflow import calculate_deadlines, load_rules, validate_case, workflow_state
 
 ROOT = Path(__file__).resolve().parents[2]
 HOST = "127.0.0.1"
 PORT = int(os.environ.get("SCHOOLSVS_PORT", "8768"))
-VERSION = "0.7.0"
+VERSION = "0.8.0"
 
 
 class Handler(BaseHTTPRequestHandler):
-    server_version = "SchoolSVS-Hybrid/0.7"
+    server_version = "SchoolSVS-Hybrid/0.8"
 
     def _json(self, payload, status=200):
         body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
@@ -88,6 +87,15 @@ class Handler(BaseHTTPRequestHandler):
                 "templateDir": str(TEMPLATE_DIR),
                 "readyCount": sum(1 for d in docs if d.get("templateReady")),
             })
+        if path == "/api/documents/sources":
+            return self._json({"ok": True, "sources": source_catalog()})
+        if path == "/api/documents/mapping":
+            key = (query.get("key") or [""])[0]
+            try:
+                workspace = build_mapping_workspace(key)
+            except KeyError as e:
+                return self._json({"ok": False, "error": str(e)}, 404)
+            return self._json({"ok": True, "workspace": workspace})
         if path == "/api/documents/inspect":
             key = (query.get("key") or [""])[0]
             registry = load_registry()
@@ -102,17 +110,6 @@ class Handler(BaseHTTPRequestHandler):
             except ValueError as e:
                 return self._json({"ok": False, "error": str(e), "templateReady": True}, 400)
             return self._json({"ok": True, "document": key, "inspection": info})
-        if path == "/api/documents/analysis":
-            key = (query.get("key") or [""])[0]
-            if not key:
-                return self._json({"ok": False, "error": "문서 key가 필요합니다."}, 400)
-            analysis = get_saved_analysis(key)
-            if not analysis:
-                try:
-                    analysis = save_analysis(key)
-                except FileNotFoundError as e:
-                    return self._json({"ok": False, "error": str(e)}, 404)
-            return self._json({"ok": True, "analysis": analysis})
         if path == "/api/cases":
             return self._json({"ok": True, "cases": list_cases()})
         if path.startswith("/api/cases/"):
@@ -160,17 +157,23 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json({"ok": True, "validation": validate_case(data), "workflow": workflow_state(data), "deadlines": calculate_deadlines(data)})
             if path == "/api/documents/register":
                 key = str(data.get("documentKey") or "").strip()
-                encoded = str(data.get("base64") or "").strip()
-                if encoded.startswith("data:"):
-                    encoded = encoded.split(",", 1)[-1]
+                file_name = str(data.get("fileName") or "").strip()
+                encoded = str(data.get("base64") or "")
                 if not key or not encoded:
-                    return self._json({"ok": False, "error": "문서 key와 HWPX 파일 데이터가 필요합니다."}, 400)
+                    return self._json({"ok": False, "error": "서식키와 HWPX 파일이 필요합니다."}, 400)
                 try:
-                    payload = base64.b64decode(encoded, validate=True)
+                    file_bytes = base64.b64decode(encoded, validate=True)
                 except Exception:
-                    return self._json({"ok": False, "error": "HWPX 파일 데이터가 올바른 base64 형식이 아닙니다."}, 400)
-                result = register_template(key, payload, original_name=str(data.get("fileName") or ""))
+                    return self._json({"ok": False, "error": "HWPX 파일 데이터가 올바르지 않습니다."}, 400)
+                result = register_template(key, file_bytes, original_name=file_name)
                 return self._json({"ok": True, **result})
+            if path == "/api/documents/mapping":
+                key = str(data.get("documentKey") or "").strip()
+                items = data.get("items") or []
+                if not isinstance(items, list):
+                    return self._json({"ok": False, "error": "매핑 항목 형식이 올바르지 않습니다."}, 400)
+                result = save_mapping(key, items, status=str(data.get("status") or "draft"))
+                return self._json({"ok": True, "mapping": result})
             if path == "/api/documents/generate":
                 key = str(data.get("documentKey") or "").strip()
                 case = data.get("case")
