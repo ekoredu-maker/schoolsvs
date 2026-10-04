@@ -8,7 +8,11 @@
       headers: {'Content-Type':'application/json', ...(options.headers || {})}
     });
     const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+    if (!res.ok) {
+      const error = new Error(data.error || `HTTP ${res.status}`);
+      error.payload = data;
+      throw error;
+    }
     return data;
   }
 
@@ -23,7 +27,7 @@
     overlay.id = 'mappingOverlay';
     overlay.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,.48);z-index:300;display:none;align-items:center;justify-content:center;padding:24px';
     overlay.innerHTML = `
-      <div style="width:min(980px,96vw);max-height:88vh;overflow:auto;background:#fff;border-radius:14px;box-shadow:0 24px 70px rgba(0,0,0,.28);padding:18px">
+      <div style="width:min(1080px,96vw);max-height:88vh;overflow:auto;background:#fff;border-radius:14px;box-shadow:0 24px 70px rgba(0,0,0,.28);padding:18px">
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
           <h3 id="mappingTitle" style="margin:0;color:#173a5c">HWPX 필드 매핑</h3>
           <span id="mappingProgress" style="font-size:12px;color:#64748b"></span>
@@ -31,9 +35,10 @@
         </div>
         <div id="mappingNotice" style="font-size:12px;color:#64748b;margin-bottom:10px"></div>
         <div id="mappingRows"></div>
-        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap">
           <button id="mappingSaveDraft" style="border:1px solid #94a3b8;background:#fff;border-radius:8px;padding:7px 12px;cursor:pointer">초안 저장</button>
           <button id="mappingSaveReviewed" style="border:1px solid #173a5c;background:#173a5c;color:#fff;border-radius:8px;padding:7px 12px;cursor:pointer">검토완료 저장</button>
+          <button id="mappingBuild" style="border:1px solid #166534;background:#166534;color:#fff;border-radius:8px;padding:7px 12px;cursor:pointer">생성용 템플릿 제작</button>
         </div>
       </div>`;
     document.body.appendChild(overlay);
@@ -74,14 +79,15 @@
       const p = ws.progress || {};
       progress.textContent = `확정 ${p.confirmed || 0}/${p.total || 0}`;
       notice.textContent = ws.analysisReady
-        ? '원본 HWPX 분석 결과에서 후보 문구를 추천했습니다. 위치가 맞는 항목만 확인 체크 후 저장하세요.'
-        : '원본 HWPX가 아직 분석되지 않았습니다. 먼저 원본을 등록하면 앵커 후보를 추천할 수 있습니다.';
+        ? '원본 HWPX 분석 결과에서 후보 문구를 추천했습니다. 위치와 삽입 방식을 확인한 항목만 확정하세요.'
+        : '원본 HWPX가 아직 분석되지 않았습니다. 먼저 원본을 등록하세요.';
       const saved = new Map((ws.mapping?.items || []).map(x => [x.token, x]));
       rows.innerHTML = (ws.suggestions || []).map(s => {
         const old = saved.get(s.token) || {};
         const candidates = s.candidates || [];
         const candidateOptions = candidates.map(c => `<option value="${esc(c.text)}" data-file="${esc(c.xmlFile)}" ${old.anchor === c.text ? 'selected' : ''}>${esc(c.text)}${c.xmlFile ? ' · '+esc(c.xmlFile) : ''}</option>`).join('');
-        return `<div class="mapRow" data-token="${esc(s.token)}" data-source="${esc(s.source)}" style="display:grid;grid-template-columns:150px 170px 1fr 90px;gap:8px;align-items:center;padding:9px 0;border-bottom:1px solid #e2e8f0">
+        const strategy = old.strategy || 'next_cell_replace';
+        return `<div class="mapRow" data-token="${esc(s.token)}" data-source="${esc(s.source)}" data-old-file="${esc(old.xmlFile || '')}" style="display:grid;grid-template-columns:145px 170px 1fr 150px 72px;gap:8px;align-items:center;padding:9px 0;border-bottom:1px solid #e2e8f0">
           <div><b style="font-size:12px">${esc(s.label || s.token)}</b><div style="font-size:11px;color:#64748b">${esc(s.token)}</div></div>
           <div style="font-size:12px;color:#334155">${esc(s.source)}</div>
           <div>
@@ -90,6 +96,11 @@
             </select>
             <input class="mapManual" value="${esc(old.anchor || '')}" placeholder="직접 앵커 문구 입력" style="width:calc(100% - 14px);margin-top:5px;padding:6px;border:1px solid #cbd5e1;border-radius:7px">
           </div>
+          <select class="mapStrategy" style="padding:6px;border:1px solid #cbd5e1;border-radius:7px;font-size:11px">
+            <option value="next_cell_replace" ${strategy === 'next_cell_replace' ? 'selected' : ''}>다음 값 셀</option>
+            <option value="same_text_append" ${strategy === 'same_text_append' ? 'selected' : ''}>같은 셀 뒤</option>
+            <option value="replace_anchor" ${strategy === 'replace_anchor' ? 'selected' : ''}>앵커 교체</option>
+          </select>
           <label style="font-size:12px"><input type="checkbox" class="mapConfirmed" ${old.confirmed ? 'checked' : ''}> 확인</label>
         </div>`;
       }).join('');
@@ -101,20 +112,31 @@
       overlay.dataset.key = key;
       overlay.querySelector('#mappingSaveDraft').onclick = () => saveMapping(overlay, 'draft');
       overlay.querySelector('#mappingSaveReviewed').onclick = () => saveMapping(overlay, 'reviewed');
+      overlay.querySelector('#mappingBuild').onclick = () => buildTemplate(overlay);
     } catch (e) {
       notice.textContent = `매핑 불러오기 실패: ${e.message}`;
     }
   }
 
+  function collectItems(overlay) {
+    return [...overlay.querySelectorAll('.mapRow')].map(row => {
+      const select = row.querySelector('.mapAnchor');
+      const selected = select.options[select.selectedIndex];
+      return {
+        token: row.dataset.token,
+        source: row.dataset.source,
+        anchor: row.querySelector('.mapManual').value.trim(),
+        xmlFile: selected?.dataset?.file || row.dataset.oldFile || '',
+        occurrence: 1,
+        confirmed: row.querySelector('.mapConfirmed').checked,
+        strategy: row.querySelector('.mapStrategy').value
+      };
+    }).filter(x => x.anchor || x.confirmed);
+  }
+
   async function saveMapping(overlay, status) {
     const key = overlay.dataset.key;
-    const items = [...overlay.querySelectorAll('.mapRow')].map(row => ({
-      token: row.dataset.token,
-      source: row.dataset.source,
-      anchor: row.querySelector('.mapManual').value.trim(),
-      confirmed: row.querySelector('.mapConfirmed').checked,
-      strategy: 'review'
-    })).filter(x => x.anchor || x.confirmed);
+    const items = collectItems(overlay);
     const notice = overlay.querySelector('#mappingNotice');
     try {
       const result = await api('/api/documents/mapping', {
@@ -123,10 +145,31 @@
       const confirmed = (result.mapping?.items || []).filter(x => x.confirmed).length;
       overlay.querySelector('#mappingProgress').textContent = `확정 ${confirmed}/${overlay.querySelectorAll('.mapRow').length}`;
       notice.textContent = status === 'reviewed'
-        ? '검토완료 상태로 저장했습니다. 실제 서식 생성 전에는 원본 한글 문서와 출력 비교가 필요합니다.'
+        ? '검토완료 상태로 저장했습니다. 생성용 템플릿 제작 후 실제 한글 출력 비교가 필요합니다.'
         : '매핑 초안을 저장했습니다.';
+      return result.mapping;
     } catch (e) {
       notice.textContent = `저장 실패: ${e.message}`;
+      return null;
+    }
+  }
+
+  async function buildTemplate(overlay) {
+    const key = overlay.dataset.key;
+    const notice = overlay.querySelector('#mappingNotice');
+    notice.textContent = '확정 매핑을 저장하고 생성용 HWPX 템플릿을 제작하는 중입니다.';
+    const saved = await saveMapping(overlay, 'reviewed');
+    if (!saved) return;
+    try {
+      const result = await api('/api/documents/build', {
+        method:'POST', body:JSON.stringify({documentKey:key})
+      });
+      const report = result.report || {};
+      const inserted = report.insertedTokens || [];
+      notice.innerHTML = `<span style="color:#166534;font-weight:700">생성용 템플릿 제작 완료</span> · 토큰 ${inserted.length}개 삽입<br><span style="color:#64748b">공식 원본은 수정하지 않았습니다. 실제 HWPX 생성 후 한글에서 원본과 비교 검증하세요.</span>`;
+      document.dispatchEvent(new CustomEvent('schoolsvs:template-built', {detail:{key, report}}));
+    } catch (e) {
+      notice.textContent = `템플릿 제작 실패: ${e.message}`;
     }
   }
 
