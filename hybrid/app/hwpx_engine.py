@@ -18,6 +18,8 @@ TEMPLATE_DIR = BASE_DIR / "templates"
 OUTPUT_DIR = BASE_DIR / "output"
 ANALYSIS_DIR = TEMPLATE_DIR / "_analysis"
 ARCHIVE_DIR = TEMPLATE_DIR / "_archive"
+BUILT_DIR = TEMPLATE_DIR / "_built"
+BUILD_REPORT_DIR = TEMPLATE_DIR / "_build_reports"
 REGISTRY_PATH = Path(__file__).with_name("document_registry.json")
 TOKEN_RE = re.compile(r"\{\{\s*([A-Za-z0-9_.\-]+)\s*\}\}")
 
@@ -44,13 +46,25 @@ def _document_definition(document_key: str) -> dict[str, Any]:
     return doc
 
 
+def source_template_path(document_key: str) -> Path:
+    doc = _document_definition(document_key)
+    return TEMPLATE_DIR / str(doc.get("template") or "")
+
+
+def built_template_path(document_key: str) -> Path:
+    doc = _document_definition(document_key)
+    return BUILT_DIR / str(doc.get("template") or "")
+
+
 def list_documents() -> list[dict[str, Any]]:
     registry = load_registry()
     docs = []
     for key, item in (registry.get("documents") or {}).items():
         template_name = item.get("template") or ""
         template_path = TEMPLATE_DIR / template_name if template_name else None
+        built_path = BUILT_DIR / template_name if template_name else None
         analysis_path = ANALYSIS_DIR / f"{key}.json"
+        build_report = BUILD_REPORT_DIR / f"{key}.json"
         docs.append({
             "key": key,
             "label": item.get("label") or key,
@@ -58,8 +72,10 @@ def list_documents() -> list[dict[str, Any]]:
             "stage": item.get("stage"),
             "template": template_name,
             "templateReady": bool(template_path and template_path.exists()),
+            "builtTemplateReady": bool(built_path and built_path.exists()),
             "mappingReady": bool(item.get("fields")),
             "analysisReady": analysis_path.exists(),
+            "buildReportReady": build_report.exists(),
         })
     return docs
 
@@ -155,7 +171,6 @@ def _normalize_mapping(case: dict[str, Any], settings: dict[str, Any], fields: d
 
 
 def _replace_raw_xml(xml_bytes: bytes, replacements: dict[str, str]) -> tuple[bytes, set[str], set[str]]:
-    """원본 XML 구조를 다시 직렬화하지 않고 토큰 문자열만 최소 치환한다."""
     text = xml_bytes.decode("utf-8", errors="strict")
     replaced: set[str] = set()
     for token, value in replacements.items():
@@ -168,7 +183,6 @@ def _replace_raw_xml(xml_bytes: bytes, replacements: dict[str, str]) -> tuple[by
 
 
 def _extract_text_samples(xml_bytes: bytes, max_items: int = 240) -> list[str]:
-    """원본을 수정하지 않고 XML의 실제 텍스트 조각만 분석용으로 추출한다."""
     samples: list[str] = []
     try:
         root = ET.fromstring(xml_bytes)
@@ -245,7 +259,7 @@ def get_saved_analysis(document_key: str) -> dict[str, Any] | None:
 
 
 def register_template(document_key: str, payload: bytes, original_name: str = "") -> dict[str, Any]:
-    """공식 원본 HWPX를 등록하고 기존 파일은 자동 보관한다."""
+    """공식 원본 HWPX를 등록한다. 생성용(_built) 템플릿은 별도로 제작한다."""
     doc = _document_definition(document_key)
     template_name = str(doc.get("template") or "").strip()
     if not template_name:
@@ -269,12 +283,16 @@ def register_template(document_key: str, payload: bytes, original_name: str = ""
             archived = ARCHIVE_DIR / f"{target.stem}_{stamp}{target.suffix}"
             shutil.copy2(target, archived)
         shutil.copy2(tmp_path, target)
+        # 공식 원본이 바뀌면 과거 원본에서 만든 생성용 템플릿을 사용하지 않는다.
+        (BUILT_DIR / template_name).unlink(missing_ok=True)
+        (BUILD_REPORT_DIR / f"{document_key}.json").unlink(missing_ok=True)
         analysis = save_analysis(document_key)
         return {
             "documentKey": document_key,
             "template": template_name,
             "originalName": original_name,
             "archivedPrevious": archived.name if archived else None,
+            "builtTemplateInvalidated": True,
             "analysis": analysis,
         }
     finally:
@@ -282,6 +300,7 @@ def register_template(document_key: str, payload: bytes, original_name: str = ""
 
 
 def _write_hwpx_package(source_dir: Path, output_path: Path) -> None:
+    output_path.parent.mkdir(parents=True, exist_ok=True)
     files = [p for p in source_dir.rglob("*") if p.is_file()]
     mimetype = source_dir / "mimetype"
     with zipfile.ZipFile(output_path, "w") as out:
@@ -299,11 +318,13 @@ def generate_document(document_key: str, case: dict[str, Any], settings: dict[st
     template_name = str(doc.get("template") or "").strip()
     if not template_name:
         raise ValueError("문서 템플릿 파일명이 등록되지 않았습니다.")
-    template_path = TEMPLATE_DIR / template_name
+    built_path = BUILT_DIR / template_name
+    source_path = TEMPLATE_DIR / template_name
+    template_path = built_path if built_path.exists() else source_path
     if not template_path.exists():
         raise FileNotFoundError(f"템플릿 미등록: {template_name}")
     if not zipfile.is_zipfile(template_path):
-        raise ValueError(f"유효한 HWPX 파일이 아닙니다: {template_name}")
+        raise ValueError(f"유효한 HWPX 파일이 아닙니다: {template_path.name}")
 
     settings = settings or {}
     replacements = _normalize_mapping(case, settings, doc.get("fields") or {})
