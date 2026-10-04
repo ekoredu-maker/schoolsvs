@@ -23,7 +23,16 @@ from hwpx_engine import (
     register_template,
 )
 from mapping_service import build_mapping_workspace, save_mapping, source_catalog
-from storage import delete_case, get_case, get_value, init_db, list_cases, set_value, upsert_case
+from storage import (
+    backup_state,
+    delete_case,
+    get_case,
+    get_value,
+    init_db,
+    list_cases,
+    sync_state,
+    upsert_case,
+)
 from student_profiles import consent_readiness, profile_readiness
 from template_builder import build_template, load_build_report
 from workflow import calculate_deadlines, load_rules, validate_case, workflow_state
@@ -31,7 +40,8 @@ from workflow import calculate_deadlines, load_rules, validate_case, workflow_st
 ROOT = Path(__file__).resolve().parents[2]
 HOST = "127.0.0.1"
 PORT = int(os.environ.get("SCHOOLSVS_PORT", "8768"))
-VERSION = "0.16.0"
+VERSION = "0.17.0"
+APP_ID = "schoolsvs-hybrid"
 
 FORM10_DIRECT_TOKENS = {
     "INVESTIGATION_MODE", "NO2_ACTION_DATE", "VIOLENCE_TYPE", "SEPARATION_PERIOD",
@@ -43,7 +53,7 @@ FORM10_DIRECT_TOKENS = {
 
 
 class Handler(BaseHTTPRequestHandler):
-    server_version = "SchoolSVS-Hybrid/0.16"
+    server_version = "SchoolSVS-Hybrid/0.17"
 
     def _json(self, payload, status=200):
         body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
@@ -85,6 +95,7 @@ class Handler(BaseHTTPRequestHandler):
             rules = load_rules()
             return self._json({
                 "ok": True,
+                "appId": APP_ID,
                 "engine": "python",
                 "version": VERSION,
                 "port": PORT,
@@ -273,21 +284,14 @@ class Handler(BaseHTTPRequestHandler):
                     "warning": "템플릿 구조 검증 전 시험 생성본입니다." if missing_tokens else None,
                 })
             if path == "/api/state":
-                cases = data.get("cases") or []
-                incoming_ids = {str(case.get("id")) for case in cases if case.get("id")}
-                existing = list_cases()
-                removed = 0
-                for case in existing:
-                    case_id = str(case.get("id") or "")
-                    if case_id and case_id not in incoming_ids:
-                        if delete_case(case_id):
-                            removed += 1
-                for case in cases:
-                    if case.get("id"):
-                        upsert_case(case)
-                set_value("counter", data.get("counter", 1))
-                set_value("settings", data.get("settings", {}))
-                return self._json({"ok": True, "imported": len(cases), "removed": removed})
+                result = sync_state(
+                    data.get("cases") or [],
+                    data.get("counter", 1),
+                    data.get("settings") or {},
+                    mode=str(data.get("mode") or "merge"),
+                    allow_empty_reconcile=bool(data.get("allowEmptyReconcile")),
+                )
+                return self._json({"ok": True, **result})
             self._json({"ok": False, "error": "지원하지 않는 API입니다."}, 404)
         except FileNotFoundError as e:
             self._json({"ok": False, "error": str(e)}, 404)
@@ -300,6 +304,8 @@ class Handler(BaseHTTPRequestHandler):
         path = unquote(urlparse(self.path).path)
         if path.startswith("/api/cases/"):
             case_id = path.removeprefix("/api/cases/")
+            if get_case(case_id):
+                backup_state(f"delete_case_{case_id}")
             return self._json({"ok": delete_case(case_id)})
         self._json({"ok": False, "error": "지원하지 않는 API입니다."}, 404)
 
