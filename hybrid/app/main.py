@@ -20,16 +20,17 @@ from hwpx_engine import (
 )
 from mapping_service import build_mapping_workspace, save_mapping, source_catalog
 from storage import delete_case, get_case, get_value, init_db, list_cases, set_value, upsert_case
+from student_profiles import consent_readiness, profile_readiness
 from workflow import calculate_deadlines, load_rules, validate_case, workflow_state
 
 ROOT = Path(__file__).resolve().parents[2]
 HOST = "127.0.0.1"
 PORT = int(os.environ.get("SCHOOLSVS_PORT", "8768"))
-VERSION = "0.8.0"
+VERSION = "0.10.0"
 
 
 class Handler(BaseHTTPRequestHandler):
-    server_version = "SchoolSVS-Hybrid/0.8"
+    server_version = "SchoolSVS-Hybrid/0.10"
 
     def _json(self, payload, status=200):
         body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
@@ -128,7 +129,12 @@ class Handler(BaseHTTPRequestHandler):
             case = get_case(case_id)
             if not case:
                 return self._json({"ok": False, "error": "사안을 찾을 수 없습니다."}, 404)
-            return self._json({"ok": True, "workflow": workflow_state(case)})
+            return self._json({
+                "ok": True,
+                "workflow": workflow_state(case),
+                "studentProfiles": profile_readiness(case),
+                "consentProfiles": consent_readiness(case),
+            })
 
         if path in ("", "/"):
             relative = "hybrid/web/index.html"
@@ -152,9 +158,29 @@ class Handler(BaseHTTPRequestHandler):
                 if not result["ok"]:
                     return self._json({"ok": False, "validation": result, "workflow": workflow_state(data)}, 400)
                 upsert_case(data)
-                return self._json({"ok": True, "case": data, "validation": result, "workflow": workflow_state(data)})
+                return self._json({
+                    "ok": True,
+                    "case": data,
+                    "validation": result,
+                    "workflow": workflow_state(data),
+                    "studentProfiles": profile_readiness(data),
+                    "consentProfiles": consent_readiness(data),
+                })
             if path == "/api/validate":
-                return self._json({"ok": True, "validation": validate_case(data), "workflow": workflow_state(data), "deadlines": calculate_deadlines(data)})
+                return self._json({
+                    "ok": True,
+                    "validation": validate_case(data),
+                    "workflow": workflow_state(data),
+                    "deadlines": calculate_deadlines(data),
+                    "studentProfiles": profile_readiness(data),
+                    "consentProfiles": consent_readiness(data),
+                })
+            if path == "/api/student-profiles/readiness":
+                return self._json({
+                    "ok": True,
+                    "form10": profile_readiness(data),
+                    "consent": consent_readiness(data),
+                })
             if path == "/api/documents/register":
                 key = str(data.get("documentKey") or "").strip()
                 file_name = str(data.get("fileName") or "").strip()
