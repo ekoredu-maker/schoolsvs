@@ -5,7 +5,9 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>SchoolSVS Hybrid</title>
 <style>
-html,body{margin:0;height:100%;font-family:'Malgun Gothic','맑은 고딕',sans-serif;background:#eef3f8;color:#203040}body{display:flex;flex-direction:column}.hybridBar{height:46px;display:flex;align-items:center;gap:10px;padding:0 14px;background:#102f4b;color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.18);z-index:10}.hybridTitle{font-weight:800}.hybridBadge{font-size:12px;padding:4px 8px;border-radius:999px;background:#6b7280}.hybridBadge.ok{background:#1f7a4b}.hybridBadge.warn{background:#d97706}.hybridSpacer{flex:1}.hybridBtn{border:1px solid rgba(255,255,255,.35);background:transparent;color:#fff;border-radius:8px;padding:6px 10px;cursor:pointer}.hybridBtn:hover{background:rgba(255,255,255,.12)}#legacyFrame{border:0;width:100%;flex:1;background:#fff}.panel{position:fixed;right:14px;top:58px;width:min(420px,calc(100vw - 28px));max-height:70vh;overflow:auto;background:#fff;border:1px solid #cbd5e1;border-radius:14px;box-shadow:0 18px 45px rgba(15,23,42,.22);padding:14px;z-index:100;display:none}.panel.open{display:block}.panel h3{margin:0 0 10px;color:#1f4b7a}.panel pre{white-space:pre-wrap;font-family:inherit;font-size:13px;line-height:1.55;background:#f8fafc;padding:10px;border-radius:10px}.small{font-size:12px;color:#607488}.danger{color:#b91c1c}.success{color:#15803d}
+html,body{margin:0;height:100%;font-family:'Malgun Gothic','맑은 고딕',sans-serif;background:#eef3f8;color:#203040}body{display:flex;flex-direction:column}.hybridBar{height:46px;display:flex;align-items:center;gap:10px;padding:0 14px;background:#102f4b;color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.18);z-index:20}.hybridTitle{font-weight:800}.hybridBadge{font-size:12px;padding:4px 8px;border-radius:999px;background:#6b7280}.hybridBadge.ok{background:#1f7a4b}.hybridBadge.warn{background:#d97706}.hybridSpacer{flex:1}.hybridBtn{border:1px solid rgba(255,255,255,.35);background:transparent;color:#fff;border-radius:8px;padding:6px 10px;cursor:pointer}.hybridBtn:hover{background:rgba(255,255,255,.12)}
+#workflowDock{background:#f8fbff;border-bottom:1px solid #cbd5e1;padding:9px 14px 10px;box-shadow:0 2px 7px rgba(15,23,42,.05);z-index:15}.dockTop{display:flex;gap:10px;align-items:center;margin-bottom:8px}.dockTitle{font-weight:800;color:#173a5c}.caseLabel{font-size:12px;color:#607488}.dockToggle{margin-left:auto;border:1px solid #b9c8d7;background:#fff;color:#31516e;border-radius:8px;padding:5px 9px;cursor:pointer}.stageTrack{display:grid;grid-template-columns:repeat(7,minmax(74px,1fr));gap:6px;margin-bottom:8px}.stage{padding:6px 7px;border-radius:9px;border:1px solid #d5e0ea;background:#fff;text-align:center;font-size:12px;color:#607488}.stage.done{background:#ecfdf5;border-color:#bbddca;color:#166534;font-weight:700}.stage.current{background:#fff7ed;border-color:#f2c361;color:#9a5a05;font-weight:800}.dockGrid{display:grid;grid-template-columns:1fr 1fr 1.15fr 1.55fr;gap:8px}.dockCard{background:#fff;border:1px solid #d5e0ea;border-radius:10px;padding:8px 10px;min-height:54px}.dockCard b{display:block;font-size:11px;color:#607488;margin-bottom:4px}.dockValue{font-size:13px;line-height:1.4;font-weight:700;color:#203040}.dockValue.warn{color:#b45309}.dockValue.danger{color:#b91c1c}.dockValue.ok{color:#15803d}#workflowDock.collapsed .stageTrack,#workflowDock.collapsed .dockGrid{display:none}#legacyFrame{border:0;width:100%;flex:1;background:#fff}.panel{position:fixed;right:14px;top:58px;width:min(420px,calc(100vw - 28px));max-height:70vh;overflow:auto;background:#fff;border:1px solid #cbd5e1;border-radius:14px;box-shadow:0 18px 45px rgba(15,23,42,.22);padding:14px;z-index:100;display:none}.panel.open{display:block}.panel h3{margin:0 0 10px;color:#1f4b7a}.panel pre{white-space:pre-wrap;font-family:inherit;font-size:13px;line-height:1.55;background:#f8fafc;padding:10px;border-radius:10px}.small{font-size:12px;color:#607488}
+@media(max-width:980px){.dockGrid{grid-template-columns:1fr 1fr}.stageTrack{grid-template-columns:repeat(4,1fr)}}@media(max-width:640px){.hybridBar{gap:6px}.hybridTitle{font-size:13px}.hybridBar .small{display:none}.dockGrid{grid-template-columns:1fr}.stageTrack{grid-template-columns:repeat(2,1fr)}}
 </style>
 </head>
 <body>
@@ -14,12 +16,26 @@ html,body{margin:0;height:100%;font-family:'Malgun Gothic','맑은 고딕',sans-
   <span id="engineBadge" class="hybridBadge">Python 확인 중</span>
   <span id="syncText" class="small" style="color:#dbeafe">기존 UI 보존 모드</span>
   <span class="hybridSpacer"></span>
-  <button class="hybridBtn" id="validateBtn">현재 사안 Python 검증</button>
+  <button class="hybridBtn" id="validateBtn">상세 점검</button>
   <button class="hybridBtn" id="panelBtn">엔진 상태</button>
 </div>
+<section id="workflowDock">
+  <div class="dockTop">
+    <span class="dockTitle">업무 내비게이션</span>
+    <span id="dockCaseLabel" class="caseLabel">현재 사안을 확인하는 중입니다.</span>
+    <button id="dockToggle" class="dockToggle">접기</button>
+  </div>
+  <div id="stageTrack" class="stageTrack"></div>
+  <div class="dockGrid">
+    <div class="dockCard"><b>현재 단계</b><div id="dockStage" class="dockValue">-</div></div>
+    <div class="dockCard"><b>업무 완성도</b><div id="dockCompletion" class="dockValue">-</div></div>
+    <div class="dockCard"><b>가장 가까운 기한</b><div id="dockDeadline" class="dockValue">-</div></div>
+    <div class="dockCard"><b>지금 할 일</b><div id="dockNext" class="dockValue">-</div></div>
+  </div>
+</section>
 <iframe id="legacyFrame" src="../../index.html"></iframe>
 <div id="panel" class="panel">
-  <h3>하이브리드 엔진</h3>
+  <h3>하이브리드 엔진 상세 점검</h3>
   <div id="panelSummary" class="small"></div>
   <pre id="panelOutput">연결 정보를 확인하는 중입니다.</pre>
   <button class="hybridBtn" style="background:#1f4b7a;margin-top:8px" id="restoreBtn">SQLite 데이터를 기존 화면으로 불러오기</button>
