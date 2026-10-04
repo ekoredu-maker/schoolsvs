@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-SCHEMA_VERSION = "cb-atoz-2026-v0.10"
+SCHEMA_VERSION = "cb-atoz-2026-v0.15"
 
 ROLE_LABELS = {
     "victim": "피해관련",
@@ -17,6 +17,7 @@ FORM10_REQUIRED = [
     ("gender", "성별"),
     ("guardianNoticeAt", "보호자 통보일시"),
     ("guardianNoticeMethod", "보호자 통보방법"),
+    ("recoveryGuidance", "관계회복 프로그램 안내여부"),
 ]
 
 CONSENT_REQUIRED = [
@@ -108,6 +109,17 @@ def _yes_no(value: Any) -> str:
     return "O" if bool(value) else ""
 
 
+def _guidance(value: Any) -> str:
+    if isinstance(value, bool):
+        return "○" if value else "X"
+    text = str(value or "").strip().upper()
+    if text in {"O", "○", "안내", "Y", "YES", "TRUE", "1"}:
+        return "○"
+    if text in {"X", "미안내", "N", "NO", "FALSE", "0"}:
+        return "X"
+    return text
+
+
 def form10_rows(case: dict[str, Any]) -> str:
     rows = []
     for profile in student_profiles(case):
@@ -132,6 +144,7 @@ def form10_rows(case: dict[str, Any]) -> str:
             str(profile.get("name") or ""),
             str(profile.get("gender") or ""),
             notice,
+            _guidance(profile.get("recoveryGuidance")),
             ", ".join(flags),
         ]))
     return "\n".join(rows)
