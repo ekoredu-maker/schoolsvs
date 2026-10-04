@@ -1,5 +1,6 @@
 (() => {
   const PREFIX = 'sv_assist_v2_';
+  const APP_ID = 'schoolsvs-hybrid';
   const frame = document.getElementById('legacyFrame');
   const badge = document.getElementById('engineBadge');
   const syncText = document.getElementById('syncText');
@@ -21,8 +22,11 @@
   let engineOnline = false;
   let syncTimer = null;
   let navTimer = null;
-  let patchInstalled = false;
+  let patchedStoragePrototype = null;
+  let watchedDocument = null;
+  let syncSuspended = false;
   let lastFingerprint = '';
+  let lastLocalCaseIds = new Set();
 
   async function api(path, options = {}) {
     const res = await fetch(path, {
@@ -38,7 +42,7 @@
     engineOnline = ok;
     badge.textContent = ok ? 'Python 연결됨' : '웹 단독 모드';
     badge.className = `hybridBadge ${ok ? 'ok' : 'warn'}`;
-    syncText.textContent = text || (ok ? 'SQLite 동기화 사용' : '기존 localStorage만 사용');
+    syncText.textContent = text || (ok ? 'SQLite 안전 동기화' : '기존 localStorage만 사용');
   }
 
   function parseStorage(ls, key, fallback) {
@@ -59,6 +63,10 @@
     };
   }
 
+  function idSet(cases) {
+    return new Set((Array.isArray(cases) ? cases : []).map(c => String(c?.id || '')).filter(Boolean));
+  }
+
   function currentCaseFromLegacy() {
     const w = frame.contentWindow;
     if (!w) return null;
@@ -70,7 +78,6 @@
         if (data && (data.caseNo || data.recvAt || data.summary)) return data;
       }
     } catch (_) {}
-
     const state = readLegacyState();
     const cases = state?.cases || [];
     if (!cases.length) return null;
@@ -78,12 +85,31 @@
   }
 
   async function syncLegacyState(reason = '자동 동기화') {
-    if (!engineOnline) return;
+    if (!engineOnline || syncSuspended) return;
     const state = readLegacyState();
     if (!state) return;
+    const currentIds = idSet(state.cases);
+    const removedIds = [...lastLocalCaseIds].filter(id => !currentIds.has(id));
     try {
-      const result = await api('/api/state', {method:'POST', body:JSON.stringify(state)});
-      syncText.textContent = `${reason} · ${result.imported ?? state.cases.length}건 SQLite 반영`;
+      const result = await api('/api/state', {
+        method:'POST',
+        body:JSON.stringify({...state, mode:'merge'})
+      });
+      let deleteNote = '';
+      if (removedIds.length && currentIds.size > 0) {
+        let removed = 0;
+        for (const id of removedIds) {
+          try {
+            const res = await fetch(`/api/cases/${encodeURIComponent(id)}`, {method:'DELETE'});
+            if (res.ok) removed += 1;
+          } catch (_) {}
+        }
+        if (removed) deleteNote = ` · 삭제 ${removed}건 백업 후 반영`;
+      } else if (removedIds.length && currentIds.size === 0) {
+        deleteNote = ' · 전체 비움 감지: SQLite 삭제는 안전상 차단';
+      }
+      lastLocalCaseIds = currentIds;
+      syncText.textContent = `${reason} · ${result.imported ?? state.cases.length}건 병합${deleteNote}`;
     } catch (e) {
       setStatus(false, 'Python 동기화 실패 · 기존 웹 저장은 유지됨');
       panelOutput.textContent = `동기화 오류\n${e.message}`;
@@ -91,6 +117,7 @@
   }
 
   function scheduleSync(reason) {
+    if (syncSuspended) return;
     clearTimeout(syncTimer);
     syncTimer = setTimeout(async () => {
       await syncLegacyState(reason);
@@ -99,30 +126,36 @@
   }
 
   function installStoragePatch() {
-    if (patchInstalled) return;
     const w = frame.contentWindow;
     if (!w || !w.Storage) return;
     const proto = w.Storage.prototype;
+    if (proto === patchedStoragePrototype || proto.__schoolsvsHybridPatched) {
+      patchedStoragePrototype = proto;
+      return;
+    }
     const originalSetItem = proto.setItem;
     const originalRemoveItem = proto.removeItem;
     const originalClear = proto.clear;
 
     proto.setItem = function(key, value) {
       const result = originalSetItem.call(this, key, value);
-      if (String(key).startsWith(PREFIX)) scheduleSync('저장 동기화');
+      if (!syncSuspended && String(key).startsWith(PREFIX)) scheduleSync('저장 동기화');
       return result;
     };
     proto.removeItem = function(key) {
       const result = originalRemoveItem.call(this, key);
-      if (String(key).startsWith(PREFIX)) scheduleSync('삭제 동기화');
+      if (!syncSuspended && String(key).startsWith(PREFIX)) scheduleSync('삭제 동기화');
       return result;
     };
     proto.clear = function() {
       const result = originalClear.call(this);
-      scheduleSync('전체 변경 동기화');
+      if (!syncSuspended) scheduleSync('전체 변경 감지');
       return result;
     };
-    patchInstalled = true;
+    try {
+      Object.defineProperty(proto, '__schoolsvsHybridPatched', {value:true, configurable:true});
+    } catch (_) { proto.__schoolsvsHybridPatched = true; }
+    patchedStoragePrototype = proto;
   }
 
   function installFrameActivityWatch() {
@@ -130,8 +163,10 @@
     if (!w) return;
     try {
       const doc = w.document;
+      if (doc === watchedDocument) return;
+      watchedDocument = doc;
       ['input','change','click'].forEach(evt => {
-        doc.addEventListener(evt, () => scheduleNavigatorRefresh(false), {passive:true});
+        doc.addEventListener(evt, () => scheduleNavigatorRefresh(true), {passive:true});
       });
     } catch (_) {}
   }
@@ -139,13 +174,14 @@
   async function healthCheck() {
     try {
       const h = await api('/api/health');
+      if (h.appId !== APP_ID) throw new Error('SchoolSVS가 아닌 다른 localhost 서버가 응답했습니다.');
       setStatus(true, `Python ${h.version || ''} · 규칙 ${h.rulesVersion || '-'} · SQLite 준비됨`);
       panelSummary.textContent = `엔진: ${h.engine || 'python'} / 버전: ${h.version || '-'} / 업무규칙: ${h.rulesVersion || '-'}`;
       return true;
     } catch (e) {
       setStatus(false, 'Python 서버 미연결 · 기존 웹 기능은 계속 사용 가능');
-      panelSummary.textContent = 'Python 엔진과 연결되지 않았습니다.';
-      panelOutput.textContent = '기존 HTML/JavaScript 기능은 그대로 사용할 수 있습니다. 하이브리드 실행기로 시작했는지 확인하세요.';
+      panelSummary.textContent = 'SchoolSVS Python 엔진과 연결되지 않았습니다.';
+      panelOutput.textContent = `기존 HTML/JavaScript 기능은 계속 사용할 수 있습니다.\n${e.message || '하이브리드 실행기로 시작했는지 확인하세요.'}`;
       renderNavigatorOffline();
       return false;
     }
@@ -158,11 +194,12 @@
       const server = await api('/api/state');
       const localCount = local?.cases?.length || 0;
       const serverCount = server?.cases?.length || 0;
+      lastLocalCaseIds = idSet(local?.cases || []);
       if (localCount > 0) {
-        await syncLegacyState('초기 데이터 이관');
-        panelOutput.textContent = `브라우저 기존 데이터 ${localCount}건을 SQLite에 안전 복사했습니다.\n기존 localStorage 원본은 삭제하지 않았습니다.`;
+        await syncLegacyState('초기 데이터 병합');
+        panelOutput.textContent = `브라우저 기존 데이터 ${localCount}건을 SQLite에 병합했습니다.\nSQLite에만 있던 다른 사안은 자동 삭제하지 않습니다.`;
       } else if (serverCount > 0) {
-        panelOutput.textContent = `SQLite에는 ${serverCount}건이 있고 현재 브라우저 저장자료는 비어 있습니다.\n필요하면 아래 복원 버튼으로 기존 화면에 불러올 수 있습니다.`;
+        panelOutput.textContent = `SQLite에는 ${serverCount}건이 있고 현재 브라우저 저장자료는 비어 있습니다.\n빈 브라우저 상태로 SQLite 자료를 지우지 않습니다. 필요하면 아래 복원 버튼을 사용하세요.`;
       } else {
         panelOutput.textContent = '브라우저와 SQLite 모두 신규 상태입니다.';
       }
@@ -266,9 +303,7 @@
         const hrs = Math.max(0, Math.floor((near.remainingMinutes || 0) / 60));
         setDockValue(dockDeadline, `${near.label} · 약 ${hrs}시간 남음`, hrs <= 6 ? 'warn' : '');
       }
-    } else {
-      setDockValue(dockDeadline, '현재 임박 기한 없음', 'ok');
-    }
+    } else setDockValue(dockDeadline, '현재 임박 기한 없음', 'ok');
 
     let next = actions[0] || '현재 단계의 기록을 확인하세요.';
     let tone = '';
@@ -289,7 +324,8 @@
     if (!engineOnline) return renderNavigatorOffline();
     const data = currentCaseFromLegacy();
     if (!data) return renderNavigatorEmpty();
-    const fingerprint = JSON.stringify([data.id,data.caseNo,data.status,data.recvAt,data.officeReport,data.officeDate,data.separation,data.sepPeriod,data.summary,data.updatedAt]);
+    let fingerprint = '';
+    try { fingerprint = JSON.stringify(data); } catch (_) { fingerprint = String(Date.now()); }
     if (!force && fingerprint === lastFingerprint) return;
     lastFingerprint = fingerprint;
     try {
@@ -319,17 +355,10 @@
       const wf = result.workflow || {};
       const completion = wf.completion ?? '-';
       panelOutput.textContent = [
-        formatValidation(result.validation),
-        '',
-        `[워크플로우]\n현재 단계: ${wf.stage || '-'}\n업무 완성도: ${completion}${typeof completion === 'number' ? '%' : ''}`,
-        '',
-        formatDeadlines(wf.deadlines || result.deadlines),
-        '',
-        formatNextActions(wf),
-        '',
-        wf.localRulesStatus === 'pending_verification'
-          ? '※ 충북 A to Z의 지역 세부규칙은 원문 대조가 완료되는 항목부터 단계적으로 활성화합니다.'
-          : ''
+        formatValidation(result.validation), '',
+        `[워크플로우]\n현재 단계: ${wf.stage || '-'}\n업무 완성도: ${completion}${typeof completion === 'number' ? '%' : ''}`, '',
+        formatDeadlines(wf.deadlines || result.deadlines), '',
+        formatNextActions(wf)
       ].filter(Boolean).join('\n');
     } catch (e) {
       panelOutput.textContent = `검증 실행 실패\n${e.message}`;
@@ -342,13 +371,17 @@
       const state = await api('/api/state');
       const w = frame.contentWindow;
       if (!w) throw new Error('기존 화면에 접근할 수 없습니다.');
+      syncSuspended = true;
+      clearTimeout(syncTimer);
       const ls = w.localStorage;
       ls.setItem(PREFIX+'cases', JSON.stringify(state.cases || []));
       ls.setItem(PREFIX+'counter', JSON.stringify(state.counter || 1));
       ls.setItem(PREFIX+'settings', JSON.stringify(state.settings || {}));
-      panelOutput.textContent = `SQLite 데이터 ${state.cases?.length || 0}건을 기존 화면 저장소로 복원했습니다. 화면을 새로고침합니다.`;
-      setTimeout(() => frame.contentWindow.location.reload(), 400);
+      lastLocalCaseIds = idSet(state.cases || []);
+      panelOutput.textContent = `SQLite 데이터 ${state.cases?.length || 0}건을 기존 화면 저장소로 복원했습니다. 복원 중 역동기화는 일시 중지했습니다.`;
+      setTimeout(() => frame.contentWindow.location.reload(), 250);
     } catch (e) {
+      syncSuspended = false;
       panelOutput.textContent = `복원 실패\n${e.message}`;
     }
   }
@@ -362,8 +395,11 @@
   });
 
   frame.addEventListener('load', async () => {
+    patchedStoragePrototype = null;
+    watchedDocument = null;
     installStoragePatch();
     installFrameActivityWatch();
+    syncSuspended = false;
     await healthCheck();
     await initialSync();
     await refreshNavigator(true);
