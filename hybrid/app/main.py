@@ -11,6 +11,7 @@ from pathlib import Path
 from urllib.parse import parse_qs, quote, unquote, urlparse
 
 from document_readiness import document_readiness
+from form10_markers import apply_form10_markers_to_hwpx
 from form10_student_rows import apply_student_rows_to_hwpx
 from hwpx_engine import (
     TEMPLATE_DIR,
@@ -30,11 +31,19 @@ from workflow import calculate_deadlines, load_rules, validate_case, workflow_st
 ROOT = Path(__file__).resolve().parents[2]
 HOST = "127.0.0.1"
 PORT = int(os.environ.get("SCHOOLSVS_PORT", "8768"))
-VERSION = "0.15.0"
+VERSION = "0.16.0"
+
+FORM10_DIRECT_TOKENS = {
+    "INVESTIGATION_MODE", "NO2_ACTION_DATE", "VIOLENCE_TYPE", "SEPARATION_PERIOD",
+    "OTHER_MATTERS", "OTHER_SCHOOL_NAME", "OTHER_SCHOOL_NOTIFY_AT",
+    "OTHER_SCHOOL_NOTIFY_METHOD", "OTHER_SCHOOL_RECIPIENT", "OTHER_SCHOOL_CONTACT",
+    "VICTIM_INTERVIEW_TIME", "PERP_INTERVIEW_TIME", "VICTIM_RECOVERY_OPINION",
+    "PERP_RECOVERY_OPINION", "RELATED_STUDENT_ROWS",
+}
 
 
 class Handler(BaseHTTPRequestHandler):
-    server_version = "SchoolSVS-Hybrid/0.15"
+    server_version = "SchoolSVS-Hybrid/0.16"
 
     def _json(self, payload, status=200):
         body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
@@ -244,8 +253,12 @@ class Handler(BaseHTTPRequestHandler):
                     }, 409)
                 result = generate_document(key, case, settings=settings, output_name=data.get("outputName"))
                 student_rows = None
+                form10_markers = None
+                missing_tokens = list(result.missing_tokens)
                 if key == "form10_case_report":
                     student_rows = apply_student_rows_to_hwpx(result.output_path, case)
+                    form10_markers = apply_form10_markers_to_hwpx(result.output_path, case)
+                    missing_tokens = [token for token in missing_tokens if token not in FORM10_DIRECT_TOKENS]
                 relative = result.output_path.relative_to(ROOT).as_posix()
                 return self._json({
                     "ok": True,
@@ -253,10 +266,11 @@ class Handler(BaseHTTPRequestHandler):
                     "fileName": result.output_path.name,
                     "downloadUrl": "/" + relative,
                     "replacedTokens": result.replaced_tokens,
-                    "missingTokens": result.missing_tokens,
+                    "missingTokens": missing_tokens,
                     "studentRows": student_rows,
+                    "form10Markers": form10_markers,
                     "readiness": readiness,
-                    "warning": "템플릿 구조 검증 전 시험 생성본입니다." if result.missing_tokens else None,
+                    "warning": "템플릿 구조 검증 전 시험 생성본입니다." if missing_tokens else None,
                 })
             if path == "/api/state":
                 cases = data.get("cases") or []
