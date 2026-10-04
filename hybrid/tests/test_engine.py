@@ -10,6 +10,7 @@ APP_DIR = Path(__file__).resolve().parents[1] / "app"
 sys.path.insert(0, str(APP_DIR))
 
 import storage  # noqa: E402
+from student_profiles import consent_readiness, document_context, form10_rows, profile_readiness  # noqa: E402
 from workflow import atoz_form10_readiness, calculate_deadlines, route_state, stage_gates, validate_case, workflow_state  # noqa: E402
 
 
@@ -61,6 +62,56 @@ def form10_complete() -> dict:
             "separationExceptions": {"victimOpposed": True},
         }
     }
+    return data
+
+
+def profile_case() -> dict:
+    data = form10_complete()
+    data["_hybrid"]["studentProfileSchemaVersion"] = "cb-atoz-2026-v0.10"
+    data["_hybrid"]["studentProfiles"] = [
+        {
+            "profileId": "victim-0",
+            "role": "victim",
+            "legacyIndex": 0,
+            "name": "피해학생",
+            "schoolName": "제천테스트초",
+            "grade": "6",
+            "classNo": "1",
+            "number": "3",
+            "gender": "여",
+            "guardianName": "피해보호자",
+            "guardianContact": "010-0000-0001",
+            "guardianNoticeAt": "2026-10-04T10:10",
+            "guardianNoticeMethod": "유선",
+            "relatedSchoolCaseNo": "",
+            "athlete": False,
+            "disabled": False,
+            "specialEducation": False,
+            "multicultural": False,
+            "northKoreanDefector": False,
+        },
+        {
+            "profileId": "perp-0",
+            "role": "perp",
+            "legacyIndex": 0,
+            "name": "가해학생",
+            "schoolName": "제천테스트초",
+            "grade": "6",
+            "classNo": "2",
+            "number": "7",
+            "gender": "남",
+            "guardianName": "가해보호자",
+            "guardianContact": "010-0000-0002",
+            "guardianNoticeAt": "2026-10-04T10:20",
+            "guardianNoticeMethod": "유선",
+            "relatedSchoolCaseNo": "",
+            "athlete": True,
+            "disabled": False,
+            "specialEducation": False,
+            "multicultural": False,
+            "northKoreanDefector": False,
+        },
+    ]
     return data
 
 
@@ -174,6 +225,43 @@ class WorkflowTests(unittest.TestCase):
         result = validate_case(data)
         self.assertFalse(result["ok"])
         self.assertTrue(any(x["field"] == "sepPeriod" for x in result["errors"]))
+
+
+class StudentProfileTests(unittest.TestCase):
+    def test_profile_readiness_complete(self):
+        ready = profile_readiness(profile_case())
+        self.assertTrue(ready["ready"], ready)
+        self.assertEqual(ready["total"], 2)
+        self.assertEqual(ready["score"], 100)
+
+    def test_profile_readiness_detects_missing_notice(self):
+        data = profile_case()
+        data["_hybrid"]["studentProfiles"][0]["guardianNoticeAt"] = ""
+        ready = profile_readiness(data)
+        self.assertFalse(ready["ready"])
+        self.assertLess(ready["score"], 100)
+        self.assertIn("보호자 통보일시", ready["missing"][0]["fields"])
+
+    def test_consent_readiness_requires_guardian_name(self):
+        data = profile_case()
+        data["_hybrid"]["studentProfiles"][1]["guardianName"] = ""
+        ready = consent_readiness(data)
+        self.assertFalse(ready["ready"])
+        self.assertTrue(any("보호자성명" in x["fields"] for x in ready["missing"]))
+
+    def test_form10_rows_include_role_notice_and_flags(self):
+        rows = form10_rows(profile_case())
+        self.assertIn("피해관련", rows)
+        self.assertIn("가해관련", rows)
+        self.assertIn("유선", rows)
+        self.assertIn("학생선수", rows)
+
+    def test_document_context_exposes_reusable_rows(self):
+        context = document_context(profile_case())
+        self.assertIn("피해학생", context["students.victims.names"])
+        self.assertIn("가해학생", context["students.perps.names"])
+        self.assertIn("제천테스트초", context["students.all.form12Rows"])
+        self.assertIn("피해보호자", context["students.all.consentRows"])
 
 
 class StorageTests(unittest.TestCase):
