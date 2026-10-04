@@ -14,6 +14,7 @@ from document_readiness import document_readiness
 from hwpx_engine import (
     TEMPLATE_DIR,
     generate_document,
+    get_structure_report,
     inspect_template,
     list_documents,
     load_registry,
@@ -28,11 +29,11 @@ from workflow import calculate_deadlines, load_rules, validate_case, workflow_st
 ROOT = Path(__file__).resolve().parents[2]
 HOST = "127.0.0.1"
 PORT = int(os.environ.get("SCHOOLSVS_PORT", "8768"))
-VERSION = "0.12.0"
+VERSION = "0.13.0"
 
 
 class Handler(BaseHTTPRequestHandler):
-    server_version = "SchoolSVS-Hybrid/0.12"
+    server_version = "SchoolSVS-Hybrid/0.13"
 
     def _json(self, payload, status=200):
         body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
@@ -102,6 +103,10 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/api/documents/build-report":
             key = (query.get("key") or [""])[0]
             report = load_build_report(key)
+            return self._json({"ok": bool(report), "report": report}, 200 if report else 404)
+        if path == "/api/documents/structure":
+            key = (query.get("key") or [""])[0]
+            report = get_structure_report(key)
             return self._json({"ok": bool(report), "report": report}, 200 if report else 404)
         if path == "/api/documents/inspect":
             key = (query.get("key") or [""])[0]
