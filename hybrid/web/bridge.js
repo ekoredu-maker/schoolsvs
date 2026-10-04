@@ -96,8 +96,8 @@
   async function healthCheck() {
     try {
       const h = await api('/api/health');
-      setStatus(true, `Python ${h.version || ''} · SQLite 준비됨`);
-      panelSummary.textContent = `엔진: ${h.engine || 'python'} / 포트: ${h.port || '-'} / 버전: ${h.version || '-'}`;
+      setStatus(true, `Python ${h.version || ''} · 규칙 ${h.rulesVersion || '-'} · SQLite 준비됨`);
+      panelSummary.textContent = `엔진: ${h.engine || 'python'} / 버전: ${h.version || '-'} / 업무규칙: ${h.rulesVersion || '-'}`;
       return true;
     } catch (e) {
       setStatus(false, 'Python 서버 미연결 · 기존 웹 기능은 계속 사용 가능');
@@ -131,6 +131,7 @@
     if (!v) return '검증 결과가 없습니다.';
     const lines = [];
     lines.push(v.ok ? '✓ Python 검증 통과' : '⚠ Python 검증 확인 필요');
+    lines.push(`업무규칙 버전: ${v.rulesVersion || '-'}`);
     const errors = v.errors || [];
     const warnings = v.warnings || [];
     if (errors.length) {
@@ -145,6 +146,26 @@
     return lines.join('\n');
   }
 
+  function formatDeadlines(items) {
+    if (!items || !items.length) return '[기한]\n산정할 기한이 없습니다.';
+    const lines = ['[기한]'];
+    items.forEach((x, i) => {
+      let state = '미산정';
+      if (x.status === 'completed') state = '완료';
+      else if (x.status === 'overdue') state = `기한 경과 ${Math.abs(x.remainingMinutes || 0)}분`;
+      else if (x.status === 'pending') state = `남은 시간 약 ${Math.max(0, Math.floor((x.remainingMinutes || 0)/60))}시간`;
+      else if (x.status === 'base_missing') state = '기준일시 미입력';
+      lines.push(`${i+1}. ${x.label}: ${state}${x.dueAt ? ` / 기한 ${x.dueAt.replace('T',' ')}` : ''}`);
+    });
+    return lines.join('\n');
+  }
+
+  function formatNextActions(wf) {
+    const actions = wf?.nextActions || [];
+    if (!actions.length) return '[다음 업무]\n추가 안내가 없습니다.';
+    return '[다음 업무]\n' + actions.map((x, i) => `${i+1}. ${x}`).join('\n');
+  }
+
   async function validateCurrentCase() {
     panel.classList.add('open');
     if (!engineOnline) {
@@ -157,7 +178,20 @@
       const data = w.getFormData();
       const result = await api('/api/validate', {method:'POST', body:JSON.stringify(data)});
       const wf = result.workflow || {};
-      panelOutput.textContent = formatValidation(result.validation) + `\n\n[워크플로우]\n단계: ${wf.stage || wf.current_stage || '-'}\n완성도: ${wf.completion ?? wf.completion_rate ?? '-'}${typeof (wf.completion ?? wf.completion_rate) === 'number' ? '%' : ''}`;
+      const completion = wf.completion ?? '-';
+      panelOutput.textContent = [
+        formatValidation(result.validation),
+        '',
+        `[워크플로우]\n현재 단계: ${wf.stage || '-'}\n업무 완성도: ${completion}${typeof completion === 'number' ? '%' : ''}`,
+        '',
+        formatDeadlines(wf.deadlines || result.deadlines),
+        '',
+        formatNextActions(wf),
+        '',
+        wf.localRulesStatus === 'pending_verification'
+          ? '※ 충북 A to Z의 지역 세부규칙은 원문 대조가 완료되는 항목부터 단계적으로 활성화합니다.'
+          : ''
+      ].filter(Boolean).join('\n');
     } catch (e) {
       panelOutput.textContent = `검증 실행 실패\n${e.message}`;
     }
