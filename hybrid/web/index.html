@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SchoolSVS Hybrid</title>
+<style>
+html,body{margin:0;height:100%;font-family:'Malgun Gothic','맑은 고딕',sans-serif;background:#eef3f8;color:#203040}body{display:flex;flex-direction:column}.hybridBar{height:46px;display:flex;align-items:center;gap:10px;padding:0 14px;background:#102f4b;color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.18);z-index:10}.hybridTitle{font-weight:800}.hybridBadge{font-size:12px;padding:4px 8px;border-radius:999px;background:#6b7280}.hybridBadge.ok{background:#1f7a4b}.hybridBadge.warn{background:#d97706}.hybridSpacer{flex:1}.hybridBtn{border:1px solid rgba(255,255,255,.35);background:transparent;color:#fff;border-radius:8px;padding:6px 10px;cursor:pointer}.hybridBtn:hover{background:rgba(255,255,255,.12)}#legacyFrame{border:0;width:100%;flex:1;background:#fff}.panel{position:fixed;right:14px;top:58px;width:min(420px,calc(100vw - 28px));max-height:70vh;overflow:auto;background:#fff;border:1px solid #cbd5e1;border-radius:14px;box-shadow:0 18px 45px rgba(15,23,42,.22);padding:14px;z-index:100;display:none}.panel.open{display:block}.panel h3{margin:0 0 10px;color:#1f4b7a}.panel pre{white-space:pre-wrap;font-family:inherit;font-size:13px;line-height:1.55;background:#f8fafc;padding:10px;border-radius:10px}.small{font-size:12px;color:#607488}.danger{color:#b91c1c}.success{color:#15803d}
+</style>
+</head>
+<body>
+<div class="hybridBar">
+  <span class="hybridTitle">SchoolSVS Hybrid</span>
+  <span id="engineBadge" class="hybridBadge">Python 확인 중</span>
+  <span id="syncText" class="small" style="color:#dbeafe">기존 UI 보존 모드</span>
+  <span class="hybridSpacer"></span>
+  <button class="hybridBtn" id="validateBtn">현재 사안 Python 검증</button>
+  <button class="hybridBtn" id="panelBtn">엔진 상태</button>
+</div>
+<iframe id="legacyFrame" src="../../index.html"></iframe>
+<div id="panel" class="panel">
+  <h3>하이브리드 엔진</h3>
+  <div id="panelSummary" class="small"></div>
+  <pre id="panelOutput">연결 정보를 확인하는 중입니다.</pre>
+  <button class="hybridBtn" style="background:#1f4b7a;margin-top:8px" id="restoreBtn">SQLite 데이터를 기존 화면으로 불러오기</button>
+  <div class="small" style="margin-top:8px">기존 브라우저 데이터는 자동 삭제하지 않습니다. SQLite 복원은 현재 브라우저 저장자료가 비어 있을 때만 권장합니다.</div>
+</div>
+<script src="bridge.js"></script>
+</body>
+</html>
