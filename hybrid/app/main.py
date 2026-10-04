@@ -15,10 +15,11 @@ from workflow import validate_case, workflow_state
 ROOT = Path(__file__).resolve().parents[2]
 HOST = "127.0.0.1"
 PORT = int(os.environ.get("SCHOOLSVS_PORT", "8768"))
+VERSION = "0.2.0"
 
 
 class Handler(BaseHTTPRequestHandler):
-    server_version = "SchoolSVS-Hybrid/0.1"
+    server_version = "SchoolSVS-Hybrid/0.2"
 
     def _json(self, payload, status=200):
         body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
@@ -43,6 +44,7 @@ class Handler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Content-Type", (mime or "application/octet-stream") + ("; charset=utf-8" if mime and mime.startswith("text/") else ""))
         self.send_header("Content-Length", str(len(data)))
+        self.send_header("Cache-Control", "no-store")
         self.end_headers()
         self.wfile.write(data)
 
@@ -51,7 +53,7 @@ class Handler(BaseHTTPRequestHandler):
         path = unquote(parsed.path)
 
         if path == "/api/health":
-            return self._json({"ok": True, "engine": "python", "version": "0.1.0", "port": PORT})
+            return self._json({"ok": True, "engine": "python", "version": VERSION, "port": PORT})
         if path == "/api/cases":
             return self._json({"ok": True, "cases": list_cases()})
         if path.startswith("/api/cases/"):
@@ -72,7 +74,12 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json({"ok": False, "error": "사안을 찾을 수 없습니다."}, 404)
             return self._json({"ok": True, "workflow": workflow_state(case)})
 
-        relative = "index.html" if path in ("", "/") else path.lstrip("/")
+        if path in ("", "/"):
+            relative = "hybrid/web/index.html"
+        elif path.endswith("/"):
+            relative = path.lstrip("/") + "index.html"
+        else:
+            relative = path.lstrip("/")
         target = (ROOT / relative).resolve()
         if ROOT not in target.parents and target != ROOT:
             self.send_error(403)
@@ -94,11 +101,20 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json({"ok": True, "validation": validate_case(data), "workflow": workflow_state(data)})
             if path == "/api/state":
                 cases = data.get("cases") or []
+                incoming_ids = {str(case.get("id")) for case in cases if case.get("id")}
+                existing = list_cases()
+                removed = 0
+                for case in existing:
+                    case_id = str(case.get("id") or "")
+                    if case_id and case_id not in incoming_ids:
+                        if delete_case(case_id):
+                            removed += 1
                 for case in cases:
-                    upsert_case(case)
+                    if case.get("id"):
+                        upsert_case(case)
                 set_value("counter", data.get("counter", 1))
                 set_value("settings", data.get("settings", {}))
-                return self._json({"ok": True, "imported": len(cases)})
+                return self._json({"ok": True, "imported": len(cases), "removed": removed})
             self._json({"ok": False, "error": "지원하지 않는 API입니다."}, 404)
         except ValueError as e:
             self._json({"ok": False, "error": str(e)}, 400)
@@ -118,8 +134,8 @@ class Handler(BaseHTTPRequestHandler):
 
 def run():
     init_db()
-    url = f"http://{HOST}:{PORT}/"
-    print(f"SchoolSVS Hybrid v0.1: {url}")
+    url = f"http://{HOST}:{PORT}/hybrid/web/index.html"
+    print(f"SchoolSVS Hybrid v{VERSION}: {url}")
     threading.Timer(0.8, lambda: webbrowser.open(url)).start()
     ThreadingHTTPServer((HOST, PORT), Handler).serve_forever()
 
