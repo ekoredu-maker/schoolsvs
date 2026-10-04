@@ -15,11 +15,11 @@ from workflow import calculate_deadlines, load_rules, validate_case, workflow_st
 ROOT = Path(__file__).resolve().parents[2]
 HOST = "127.0.0.1"
 PORT = int(os.environ.get("SCHOOLSVS_PORT", "8768"))
-VERSION = "0.3.0"
+VERSION = "0.4.0"
 
 
 class Handler(BaseHTTPRequestHandler):
-    server_version = "SchoolSVS-Hybrid/0.3"
+    server_version = "SchoolSVS-Hybrid/0.4"
 
     def _json(self, payload, status=200):
         body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
