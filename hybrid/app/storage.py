@@ -68,7 +68,7 @@ def upsert_case(data: dict[str, Any]) -> dict[str, Any]:
                 case_id,
                 data.get("caseNo") or data.get("case_no"),
                 data.get("status"),
-                data.get("receivedAt") or data.get("received_at") or data.get("reportDate"),
+                data.get("recvAt") or data.get("receivedAt") or data.get("received_at") or data.get("reportDate"),
                 payload,
                 created_at,
                 now,
