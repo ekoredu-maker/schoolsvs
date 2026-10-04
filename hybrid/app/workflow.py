@@ -134,7 +134,6 @@ def _investigation_ready(data: dict[str, Any]) -> tuple[bool, list[str]]:
             missing.append("전담조사관 성명")
         if not data.get("investigationDate"):
             missing.append("조사 예정일")
-    # 조사관 미사용 사안은 자동 완료로 단정하지 않고, 현재 입력구조상 선행조건 없음으로 취급
     return not missing, missing
 
 
@@ -152,8 +151,6 @@ def _decision_ready(data: dict[str, Any]) -> tuple[bool, list[str]]:
         if data.get("actionDate") or data.get("actionCode") or data.get("actionContent"):
             return True, []
         return False, ["심의 결과 또는 조치 결정 기록"]
-    # 자체해결/종결은 프로그램이 적법성 자체를 자동 판정하지 않음.
-    # 담당자 검토 선택을 단계 진행 신호로만 사용한다.
     return True, []
 
 
@@ -185,10 +182,7 @@ def stage_gates(data: dict[str, Any]) -> list[dict[str, Any]]:
     prior_done = True
     for stage, fn in checks:
         complete, missing = fn(data)
-        if not prior_done:
-            state = "locked"
-        else:
-            state = "done" if complete else "current"
+        state = "locked" if not prior_done else ("done" if complete else "current")
         gates.append({"stage": stage, "complete": complete, "state": state, "missing": missing})
         prior_done = prior_done and complete
     return gates
@@ -197,19 +191,82 @@ def stage_gates(data: dict[str, Any]) -> list[dict[str, Any]]:
 def route_state(data: dict[str, Any]) -> dict[str, Any]:
     selected = str(((data.get("_hybrid") or {}).get("route") or data.get("workflowRoute") or ""))
     committee_ready, _ = _committee_ready(data)
-    enabled = committee_ready
     options = [
         {"key": "self_resolution_review", "label": ROUTE_LABELS["self_resolution_review"]},
         {"key": "committee_review", "label": ROUTE_LABELS["committee_review"]},
         {"key": "school_close_review", "label": ROUTE_LABELS["school_close_review"]},
     ]
     return {
-        "enabled": enabled,
+        "enabled": committee_ready,
         "selected": selected or None,
         "selectedLabel": ROUTE_LABELS.get(selected),
         "options": options,
         "requiresHumanDecision": True,
         "notice": "프로그램은 자체해결·심의·종결의 적법성을 자동 확정하지 않습니다. 전담기구 검토와 담당자 판단 결과를 기록하는 보조 기능입니다.",
+    }
+
+
+def atoz_form10_readiness(data: dict[str, Any]) -> dict[str, Any]:
+    """2026 충북 A to Z 서식10의 작성 준비도만 계산한다."""
+    atoz = ((data.get("_hybrid") or {}).get("atoz") or {})
+    missing: list[dict[str, str]] = []
+    recommended: list[dict[str, str]] = []
+
+    def need(key: str, label: str) -> None:
+        if not str(atoz.get(key) or "").strip():
+            missing.append({"field": key, "label": label})
+
+    need("reporterName", "신고자 성명")
+    need("reporterRole", "신고자 신분")
+    need("recognitionPath", "접수·인지 경로")
+    need("receiverName", "접수자·인지자 성명")
+    need("receiverRole", "접수자·인지자 신분")
+    need("investigationMode", "조사관 배정요청/학교 자체조사 선택")
+
+    has_perp = _has_named_person(data.get("perps") or data.get("perpStudents") or data.get("offenders") or [])
+    if has_perp:
+        need("no2ActionDate", "가해관련학생 제2호 조치 시행일")
+
+    if not atoz.get("guardianNoticeChecked"):
+        missing.append({"field": "guardianNoticeChecked", "label": "관련학생·보호자 통보 확인"})
+
+    if atoz.get("investigationMode") == "investigator":
+        if not atoz.get("interviewAvailabilityChecked"):
+            missing.append({"field": "interviewAvailabilityChecked", "label": "학생·보호자 조사 가능시간 확인"})
+        need("victimInterviewTime", "피해관련 면담 가능시간")
+        need("perpInterviewTime", "가해관련 면담 가능시간")
+
+    if atoz.get("otherSchoolRelated"):
+        need("otherSchoolName", "관련 학교명")
+        need("otherSchoolNotifyAt", "타학교 통보 일시")
+        need("otherSchoolNotifyMethod", "타학교 통보 방법")
+        need("otherSchoolRecipient", "타학교 통보받은 사람")
+
+    if data.get("separation") == "즉시분리 미시행":
+        exceptions = atoz.get("separationExceptions") or {}
+        if not data.get("sepReason") and not any(bool(v) for v in exceptions.values()):
+            missing.append({"field": "separationExceptions", "label": "즉시분리 미시행·예외 사유"})
+
+    if not str(atoz.get("victimRecoveryOpinion") or "").strip():
+        recommended.append({"field": "victimRecoveryOpinion", "label": "피해관련 관계회복 프로그램 의견"})
+    if not str(atoz.get("perpRecoveryOpinion") or "").strip():
+        recommended.append({"field": "perpRecoveryOpinion", "label": "가해관련 관계회복 프로그램 의견"})
+
+    total_required = 7 + (1 if has_perp else 0)
+    if atoz.get("investigationMode") == "investigator":
+        total_required += 3
+    if atoz.get("otherSchoolRelated"):
+        total_required += 4
+    completed = max(0, total_required - len(missing))
+    score = round((completed / total_required) * 100) if total_required else 100
+
+    return {
+        "ready": not missing,
+        "score": score,
+        "missing": missing,
+        "recommended": recommended,
+        "schemaVersion": atoz.get("schemaVersion") or "cb-atoz-2026-v0.9",
+        "purpose": "서식10 작성 준비도",
     }
 
 
@@ -284,6 +341,7 @@ def validate_case(data: dict[str, Any]) -> dict[str, Any]:
         "ok": not errors, "errors": errors, "warnings": warnings, "score": score,
         "deadlines": deadlines, "gates": gates, "rulesVersion": rules.get("version"),
         "localRulesStatus": (rules.get("local_rules") or {}).get("status"),
+        "atozForm10": atoz_form10_readiness(data),
     }
 
 
@@ -332,4 +390,5 @@ def workflow_state(data: dict[str, Any]) -> dict[str, Any]:
         "transitionReady": bool(first_incomplete.get("complete")),
         "rulesVersion": rules.get("version"),
         "localRulesStatus": (rules.get("local_rules") or {}).get("status"),
+        "atozForm10": validation.get("atozForm10"),
     }
