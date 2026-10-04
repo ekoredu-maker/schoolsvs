@@ -1,25 +1,26 @@
 {
-  "version": "0.6.0",
+  "version": "0.8.1-atoz",
+  "source": {
+    "title": "2026. 학교폭력 사안처리 세부설명 A to Z (Q&A 포함)",
+    "publisher": "충청북도교육청 인성시민과"
+  },
   "documents": {
     "form03_receipt_ledger": {
       "label": "[서식3] 학교폭력 신고 접수 대장",
       "form_no": "서식3",
       "stage": "접수",
-      "template": "form03_학교폭력_신고접수대장.hwpx",
-      "fields": {
-        "SCHOOL_NAME": "school.name",
-        "CASE_NO": "case.caseNo",
-        "RECEIVED_AT": "case.recvAt",
-        "REPORT_TYPE": "case.reportType",
-        "VICTIM_NAMES": "victims.names",
-        "PERP_NAMES": "perps.names",
-        "INCIDENT_SUMMARY": "case.summary"
-      }
+      "automation": "manual_only",
+      "source_page": 14,
+      "policy_note": "A to Z에 따라 신고접수대장은 수기 작성·수기 결재 대상이며 컴퓨터 저장을 사용하지 않는다. 프로그램은 작성 알림·번호 일관성·체크리스트만 지원하고 전자문서 자동생성은 하지 않는다.",
+      "template": "",
+      "fields": {}
     },
     "form10_case_report": {
       "label": "[서식10] 학교폭력 사안접수 보고서",
       "form_no": "서식10",
       "stage": "초기대응",
+      "automation": "auto_candidate",
+      "source_page": 40,
       "template": "form10_학교폭력_사안접수보고서.hwpx",
       "fields": {
         "SCHOOL_NAME": "school.name",
@@ -37,12 +38,30 @@
         "OFFICE_REPORT_DATE": "case.officeDate",
         "TEACHER_NAME": "teacher.name",
         "TEACHER_POSITION": "teacher.position"
-      }
+      },
+      "data_gaps": [
+        "신고자 성명·신분 및 익명 여부",
+        "접수·인지 경로",
+        "접수자·인지자 성명·신분",
+        "조사관 배정요청 또는 학교 자체조사 선택",
+        "가해관련학생 긴급조치 2호 시행일",
+        "즉시분리 미시행 세부 예외사유 체크",
+        "관련학생별 학교명·학번·성별",
+        "관련학생별 보호자 통보 일시·방법",
+        "관련학생별 관계회복 프로그램 안내 여부",
+        "학생선수·장애학생·특수교육대상자·다문화학생·탈북학생 여부",
+        "경찰신고·고소·소송 등 기타사항",
+        "타학교 관련 여부·학교명·통보일시·방법·담당자·연락처",
+        "피해·가해 관련 전담조사관 면담 가능시간",
+        "피해·가해 관련학생의 관계회복 프로그램 의견"
+      ]
     },
     "form12_investigation_report": {
       "label": "[서식12] 학교폭력 사안조사 보고서",
       "form_no": "서식12",
       "stage": "사실조사",
+      "automation": "auto_candidate",
+      "source_page": 48,
       "template": "form12_학교폭력_사안조사보고서.hwpx",
       "fields": {
         "SCHOOL_NAME": "school.name",
@@ -60,6 +79,8 @@
       "label": "[서식18] 학교폭력 전담기구 심의결과 보고서 [자체해결]",
       "form_no": "서식18",
       "stage": "전담기구",
+      "automation": "auto_candidate",
+      "source_page": 71,
       "template": "form18_전담기구_심의결과_자체해결.hwpx",
       "fields": {
         "SCHOOL_NAME": "school.name",
@@ -74,6 +95,8 @@
       "label": "[서식19] 학교폭력 전담기구 심의결과 보고서 [종결]",
       "form_no": "서식19",
       "stage": "전담기구",
+      "automation": "auto_candidate",
+      "source_page": 72,
       "template": "form19_전담기구_심의결과_종결.hwpx",
       "fields": {
         "SCHOOL_NAME": "school.name",
@@ -88,6 +111,8 @@
       "label": "[서식20] 학교장 자체해결 동의서",
       "form_no": "서식20",
       "stage": "전담기구",
+      "automation": "auto_candidate",
+      "source_page": 75,
       "template": "form20_학교장_자체해결_동의서.hwpx",
       "fields": {
         "SCHOOL_NAME": "school.name",
@@ -100,6 +125,8 @@
       "label": "[서식21] 학교장 종결 처리 동의서",
       "form_no": "서식21",
       "stage": "전담기구",
+      "automation": "auto_candidate",
+      "source_page": 76,
       "template": "form21_학교장_종결처리_동의서.hwpx",
       "fields": {
         "SCHOOL_NAME": "school.name",
@@ -112,6 +139,8 @@
       "label": "[서식22] 학교장 자체해결/종결 결과 보고서",
       "form_no": "서식22",
       "stage": "종결",
+      "automation": "auto_candidate",
+      "source_page": 77,
       "template": "form22_학교장_처리결과_보고서.hwpx",
       "fields": {
         "SCHOOL_NAME": "school.name",
