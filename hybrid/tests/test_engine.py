@@ -3,13 +3,14 @@ from __future__ import annotations
 import sys
 import tempfile
 import unittest
+from datetime import datetime
 from pathlib import Path
 
 APP_DIR = Path(__file__).resolve().parents[1] / "app"
 sys.path.insert(0, str(APP_DIR))
 
 import storage  # noqa: E402
-from workflow import validate_case, workflow_state  # noqa: E402
+from workflow import calculate_deadlines, validate_case, workflow_state  # noqa: E402
 
 
 SAMPLE = {
@@ -52,6 +53,44 @@ class WorkflowTests(unittest.TestCase):
         result = workflow_state(data)
         self.assertEqual(result["stage"], "사실조사")
         self.assertIsInstance(result["completion"], int)
+
+    def test_24_hour_separation_deadline(self):
+        items = calculate_deadlines(dict(SAMPLE), now=datetime.fromisoformat("2026-10-05T08:00"))
+        sep = next(x for x in items if x["key"] == "separation_decision")
+        self.assertEqual(sep["dueAt"], "2026-10-05T09:00")
+        self.assertEqual(sep["status"], "pending")
+        self.assertEqual(sep["remainingMinutes"], 60)
+
+    def test_24_hour_separation_deadline_overdue(self):
+        items = calculate_deadlines(dict(SAMPLE), now=datetime.fromisoformat("2026-10-05T09:01"))
+        sep = next(x for x in items if x["key"] == "separation_decision")
+        self.assertEqual(sep["status"], "overdue")
+        self.assertTrue(sep["overdue"])
+
+    def test_48_hour_office_report_deadline(self):
+        items = calculate_deadlines(dict(SAMPLE), now=datetime.fromisoformat("2026-10-06T08:59"))
+        report = next(x for x in items if x["key"] == "office_report")
+        self.assertEqual(report["dueAt"], "2026-10-06T09:00")
+        self.assertEqual(report["status"], "pending")
+        self.assertEqual(report["remainingMinutes"], 1)
+
+    def test_completed_report_stops_deadline_warning(self):
+        data = dict(SAMPLE)
+        data["officeReport"] = "보고완료"
+        data["officeDate"] = "2026-10-05"
+        items = calculate_deadlines(data, now=datetime.fromisoformat("2026-10-07T09:00"))
+        report = next(x for x in items if x["key"] == "office_report")
+        self.assertEqual(report["status"], "completed")
+        self.assertFalse(report["overdue"])
+
+    def test_separation_limit_over_7_days_is_error(self):
+        data = dict(SAMPLE)
+        data["separation"] = "즉시분리 시행"
+        data["sepPeriod"] = "8일"
+        data["separationPlace"] = "별도 공간"
+        result = validate_case(data)
+        self.assertFalse(result["ok"])
+        self.assertTrue(any(x["field"] == "sepPeriod" for x in result["errors"]))
 
 
 class StorageTests(unittest.TestCase):
