@@ -1,0 +1,18 @@
+{
+  "version": "2026.0-draft",
+  "notice": "공식 지침 대조 전 초안. 법정·행정 기한은 검증 후 활성화한다.",
+  "workflow": [
+    "접수",
+    "초기대응",
+    "사실조사",
+    "전담기구",
+    "심의",
+    "조치이행",
+    "종결"
+  ],
+  "deadlines": {},
+  "required_fields": {
+    "base": ["id", "caseNo", "status"],
+    "close": ["closedDate"]
+  }
+}
