@@ -42,7 +42,15 @@ def _basic_section(case: dict[str, Any], settings: dict[str, Any]) -> dict[str, 
         missing.append("피해관련학생")
     if not _named(case.get("perps") or []):
         missing.append("가해관련학생")
-    return _section("basic", "기본정보", missing, 9)
+
+    total = 9
+    if str(case.get("violenceType") or "") == "복합(2개 이상)":
+        total += 1
+        atoz = ((case.get("_hybrid") or {}).get("atoz") or {})
+        detailed = atoz.get("violenceTypes") or []
+        if not isinstance(detailed, list) or len([x for x in detailed if str(x).strip()]) < 2:
+            missing.append("복합 폭력유형 상세선택(2개 이상)")
+    return _section("basic", "기본정보", missing, total)
 
 
 def _initial_section(case: dict[str, Any]) -> dict[str, Any]:
