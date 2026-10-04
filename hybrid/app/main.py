@@ -10,6 +10,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, quote, unquote, urlparse
 
+from document_readiness import document_readiness
 from hwpx_engine import (
     TEMPLATE_DIR,
     generate_document,
@@ -26,11 +27,11 @@ from workflow import calculate_deadlines, load_rules, validate_case, workflow_st
 ROOT = Path(__file__).resolve().parents[2]
 HOST = "127.0.0.1"
 PORT = int(os.environ.get("SCHOOLSVS_PORT", "8768"))
-VERSION = "0.10.0"
+VERSION = "0.11.0"
 
 
 class Handler(BaseHTTPRequestHandler):
-    server_version = "SchoolSVS-Hybrid/0.10"
+    server_version = "SchoolSVS-Hybrid/0.11"
 
     def _json(self, payload, status=200):
         body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
@@ -181,6 +182,13 @@ class Handler(BaseHTTPRequestHandler):
                     "form10": profile_readiness(data),
                     "consent": consent_readiness(data),
                 })
+            if path == "/api/documents/readiness":
+                key = str(data.get("documentKey") or "").strip()
+                case = data.get("case")
+                if not isinstance(case, dict):
+                    return self._json({"ok": False, "error": "점검할 사안 데이터가 없습니다."}, 400)
+                settings = data.get("settings") if isinstance(data.get("settings"), dict) else get_value("settings", {})
+                return self._json({"ok": True, "readiness": document_readiness(key, case, settings=settings)})
             if path == "/api/documents/register":
                 key = str(data.get("documentKey") or "").strip()
                 file_name = str(data.get("fileName") or "").strip()
@@ -210,6 +218,13 @@ class Handler(BaseHTTPRequestHandler):
                 settings = data.get("settings")
                 if not isinstance(settings, dict):
                     settings = get_value("settings", {})
+                readiness = document_readiness(key, case, settings=settings)
+                if key == "form10_case_report" and not readiness.get("ready"):
+                    return self._json({
+                        "ok": False,
+                        "error": "서식10 생성 전 필수 점검을 완료하세요.",
+                        "readiness": readiness,
+                    }, 409)
                 result = generate_document(key, case, settings=settings, output_name=data.get("outputName"))
                 relative = result.output_path.relative_to(ROOT).as_posix()
                 return self._json({
@@ -219,6 +234,7 @@ class Handler(BaseHTTPRequestHandler):
                     "downloadUrl": "/" + relative,
                     "replacedTokens": result.replaced_tokens,
                     "missingTokens": result.missing_tokens,
+                    "readiness": readiness,
                     "warning": "템플릿 구조 검증 전 시험 생성본입니다." if result.missing_tokens else None,
                 })
             if path == "/api/state":
