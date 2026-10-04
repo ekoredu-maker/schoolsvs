@@ -146,4 +146,10 @@
     script.dataset.schoolsvsStudents = '1';
     document.body.appendChild(script);
   }
+  if (!document.querySelector('script[data-schoolsvs-structure]')) {
+    const script = document.createElement('script');
+    script.src = 'structure-ui.js';
+    script.dataset.schoolsvsStructure = '1';
+    document.body.appendChild(script);
+  }
 })();
