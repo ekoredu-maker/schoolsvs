@@ -1,0 +1,125 @@
+{
+  "version": "0.6.0",
+  "documents": {
+    "form03_receipt_ledger": {
+      "label": "[서식3] 학교폭력 신고 접수 대장",
+      "form_no": "서식3",
+      "stage": "접수",
+      "template": "form03_학교폭력_신고접수대장.hwpx",
+      "fields": {
+        "SCHOOL_NAME": "school.name",
+        "CASE_NO": "case.caseNo",
+        "RECEIVED_AT": "case.recvAt",
+        "REPORT_TYPE": "case.reportType",
+        "VICTIM_NAMES": "victims.names",
+        "PERP_NAMES": "perps.names",
+        "INCIDENT_SUMMARY": "case.summary"
+      }
+    },
+    "form10_case_report": {
+      "label": "[서식10] 학교폭력 사안접수 보고서",
+      "form_no": "서식10",
+      "stage": "초기대응",
+      "template": "form10_학교폭력_사안접수보고서.hwpx",
+      "fields": {
+        "SCHOOL_NAME": "school.name",
+        "CASE_NO": "case.caseNo",
+        "RECEIVED_AT": "case.recvAt",
+        "INCIDENT_DATE": "case.incidentDate",
+        "INCIDENT_PLACE": "case.incidentPlace",
+        "VIOLENCE_TYPE": "case.violenceType",
+        "VICTIM_NAMES": "victims.names",
+        "PERP_NAMES": "perps.names",
+        "INCIDENT_SUMMARY": "case.summary",
+        "SEPARATION": "case.separation",
+        "SEPARATION_PERIOD": "case.sepPeriod",
+        "SEPARATION_PLACE": "case.separationPlace",
+        "OFFICE_REPORT_DATE": "case.officeDate",
+        "TEACHER_NAME": "teacher.name",
+        "TEACHER_POSITION": "teacher.position"
+      }
+    },
+    "form12_investigation_report": {
+      "label": "[서식12] 학교폭력 사안조사 보고서",
+      "form_no": "서식12",
+      "stage": "사실조사",
+      "template": "form12_학교폭력_사안조사보고서.hwpx",
+      "fields": {
+        "SCHOOL_NAME": "school.name",
+        "CASE_NO": "case.caseNo",
+        "VICTIM_NAMES": "victims.names",
+        "PERP_NAMES": "perps.names",
+        "INCIDENT_SUMMARY": "case.summary",
+        "DAMAGE": "case.damage",
+        "EVIDENCE": "case.evidence",
+        "INVESTIGATOR_NAME": "case.investigatorName",
+        "INVESTIGATION_DATE": "case.investigationDate"
+      }
+    },
+    "form18_self_resolution": {
+      "label": "[서식18] 학교폭력 전담기구 심의결과 보고서 [자체해결]",
+      "form_no": "서식18",
+      "stage": "전담기구",
+      "template": "form18_전담기구_심의결과_자체해결.hwpx",
+      "fields": {
+        "SCHOOL_NAME": "school.name",
+        "CASE_NO": "case.caseNo",
+        "COMMITTEE_DATE": "case.committeeDate",
+        "VICTIM_NAMES": "victims.names",
+        "PERP_NAMES": "perps.names",
+        "INCIDENT_SUMMARY": "case.summary"
+      }
+    },
+    "form19_close": {
+      "label": "[서식19] 학교폭력 전담기구 심의결과 보고서 [종결]",
+      "form_no": "서식19",
+      "stage": "전담기구",
+      "template": "form19_전담기구_심의결과_종결.hwpx",
+      "fields": {
+        "SCHOOL_NAME": "school.name",
+        "CASE_NO": "case.caseNo",
+        "COMMITTEE_DATE": "case.committeeDate",
+        "VICTIM_NAMES": "victims.names",
+        "PERP_NAMES": "perps.names",
+        "INCIDENT_SUMMARY": "case.summary"
+      }
+    },
+    "form20_self_resolution_consent": {
+      "label": "[서식20] 학교장 자체해결 동의서",
+      "form_no": "서식20",
+      "stage": "전담기구",
+      "template": "form20_학교장_자체해결_동의서.hwpx",
+      "fields": {
+        "SCHOOL_NAME": "school.name",
+        "CASE_NO": "case.caseNo",
+        "VICTIM_NAMES": "victims.names",
+        "PERP_NAMES": "perps.names"
+      }
+    },
+    "form21_close_consent": {
+      "label": "[서식21] 학교장 종결 처리 동의서",
+      "form_no": "서식21",
+      "stage": "전담기구",
+      "template": "form21_학교장_종결처리_동의서.hwpx",
+      "fields": {
+        "SCHOOL_NAME": "school.name",
+        "CASE_NO": "case.caseNo",
+        "VICTIM_NAMES": "victims.names",
+        "PERP_NAMES": "perps.names"
+      }
+    },
+    "form22_result_report": {
+      "label": "[서식22] 학교장 자체해결/종결 결과 보고서",
+      "form_no": "서식22",
+      "stage": "종결",
+      "template": "form22_학교장_처리결과_보고서.hwpx",
+      "fields": {
+        "SCHOOL_NAME": "school.name",
+        "CASE_NO": "case.caseNo",
+        "VICTIM_NAMES": "victims.names",
+        "PERP_NAMES": "perps.names",
+        "CLOSED_DATE": "case.closedDate"
+      }
+    }
+  }
+}
