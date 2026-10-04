@@ -1,6 +1,6 @@
 {
-  "version": "2026.0-draft",
-  "notice": "공식 지침 대조 전 초안. 법정·행정 기한은 검증 후 활성화한다.",
+  "version": "2026.0-common-verified",
+  "notice": "2026 학교폭력 사안처리 가이드북의 전국 공통 기준을 우선 반영. 충북 A to Z의 지역 세부 규칙은 별도 검증 후 local_rules에 추가한다.",
   "workflow": [
     "접수",
     "초기대응",
@@ -10,9 +10,45 @@
     "조치이행",
     "종결"
   ],
-  "deadlines": {},
+  "deadlines": {
+    "office_report": {
+      "label": "교육(지원)청 사안접수 보고",
+      "base_field": "recvAt",
+      "hours": 48,
+      "completion_field": "officeDate",
+      "completion_status_field": "officeReport",
+      "completion_status_value": "보고완료",
+      "source": "2026 학교폭력 사안처리 가이드북",
+      "verified": true
+    },
+    "separation_decision": {
+      "label": "가해자와 피해학생 분리기간·방법 결정",
+      "base_field": "recvAt",
+      "hours": 24,
+      "completion_field": "separation",
+      "source": "2026 학교폭력 사안처리 가이드북",
+      "verified": true
+    }
+  },
+  "limits": {
+    "separation_max_days": {
+      "value": 7,
+      "unit": "days",
+      "source": "2026 학교폭력 사안처리 가이드북",
+      "verified": true
+    }
+  },
   "required_fields": {
-    "base": ["id", "caseNo", "status"],
+    "base": ["id", "caseNo", "status", "recvAt", "incidentDate", "incidentPlace", "reportType", "violenceType", "summary"],
     "close": ["closedDate"]
+  },
+  "local_rules": {
+    "region": "충청북도",
+    "status": "pending_verification",
+    "items": [
+      "가해관련학생 긴급선도조치 2호의 충북 A to Z 세부 적용 방식",
+      "충북 전담기구·조사관 운영 세부기한",
+      "충북 서식별 필수항목 및 문서 번호 매핑"
+    ]
   }
 }
