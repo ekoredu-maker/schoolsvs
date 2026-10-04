@@ -10,7 +10,7 @@ APP_DIR = Path(__file__).resolve().parents[1] / "app"
 sys.path.insert(0, str(APP_DIR))
 
 import storage  # noqa: E402
-from workflow import calculate_deadlines, route_state, stage_gates, validate_case, workflow_state  # noqa: E402
+from workflow import atoz_form10_readiness, calculate_deadlines, route_state, stage_gates, validate_case, workflow_state  # noqa: E402
 
 
 SAMPLE = {
@@ -36,6 +36,31 @@ def initial_complete() -> dict:
         "officeReport": "보고완료",
         "officeDate": "2026-10-05",
     })
+    return data
+
+
+def form10_complete() -> dict:
+    data = initial_complete()
+    data["_hybrid"] = {
+        "atoz": {
+            "schemaVersion": "cb-atoz-2026-v0.9",
+            "reporterName": "신고자",
+            "reporterRole": "보호자",
+            "recognitionPath": "보호자 신고",
+            "receiverName": "담당교사",
+            "receiverRole": "학교폭력담당교사",
+            "investigationMode": "investigator",
+            "no2ActionDate": "2026-10-04T10:00",
+            "guardianNoticeChecked": True,
+            "interviewAvailabilityChecked": True,
+            "victimInterviewTime": "2026-10-05 10:00",
+            "perpInterviewTime": "2026-10-05 14:00",
+            "victimRecoveryOpinion": "참여 여부 검토",
+            "perpRecoveryOpinion": "대화 의사 있음",
+            "otherSchoolRelated": False,
+            "separationExceptions": {"victimOpposed": True},
+        }
+    }
     return data
 
 
@@ -70,7 +95,7 @@ class WorkflowTests(unittest.TestCase):
         gates = stage_gates(initial_complete())
         self.assertTrue(gates[0]["complete"])
         self.assertTrue(gates[1]["complete"])
-        self.assertEqual(gates[2]["state"], "done")  # 조사관 미사용 시 현재 입력구조상 선행조건 없음
+        self.assertEqual(gates[2]["state"], "done")
         self.assertEqual(gates[3]["state"], "current")
         self.assertIn("전담기구 개최일", gates[3]["missing"])
 
@@ -87,6 +112,30 @@ class WorkflowTests(unittest.TestCase):
         self.assertTrue(route["enabled"])
         self.assertTrue(route["requiresHumanDecision"])
         self.assertEqual(route["selectedLabel"], "학교장 자체해결 검토")
+
+    def test_atoz_form10_reports_missing_core_fields(self):
+        ready = atoz_form10_readiness(dict(SAMPLE))
+        self.assertFalse(ready["ready"])
+        labels = {x["label"] for x in ready["missing"]}
+        self.assertIn("신고자 성명", labels)
+        self.assertIn("가해관련학생 제2호 조치 시행일", labels)
+        self.assertIn("관련학생·보호자 통보 확인", labels)
+
+    def test_atoz_form10_complete_for_investigator_case(self):
+        ready = atoz_form10_readiness(form10_complete())
+        self.assertTrue(ready["ready"], ready)
+        self.assertEqual(ready["score"], 100)
+
+    def test_atoz_other_school_requires_notification_details(self):
+        data = form10_complete()
+        data["_hybrid"]["atoz"]["otherSchoolRelated"] = True
+        ready = atoz_form10_readiness(data)
+        self.assertFalse(ready["ready"])
+        labels = {x["label"] for x in ready["missing"]}
+        self.assertIn("관련 학교명", labels)
+        self.assertIn("타학교 통보 일시", labels)
+        self.assertIn("타학교 통보 방법", labels)
+        self.assertIn("타학교 통보받은 사람", labels)
 
     def test_24_hour_separation_deadline(self):
         items = calculate_deadlines(dict(SAMPLE), now=datetime.fromisoformat("2026-10-05T08:00"))
