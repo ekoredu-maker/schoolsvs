@@ -1,0 +1,83 @@
+name: SchoolSVS Windows Portable
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - hybrid-v0.1
+    paths:
+      - 'index.html'
+      - 'SchoolSVS_실행.bat'
+      - 'hybrid/**'
+      - '.github/workflows/hybrid-portable-windows.yml'
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Prepare portable folder
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $root = Join-Path $PWD 'dist\SchoolSVS_Portable'
+          New-Item -ItemType Directory -Force -Path $root | Out-Null
+          Copy-Item 'index.html' $root
+          Copy-Item 'SchoolSVS_실행.bat' $root
+          Copy-Item 'hybrid' (Join-Path $root 'hybrid') -Recurse
+
+          # 개발 중 생성될 수 있는 실제 데이터/출력은 배포본에 포함하지 않는다.
+          $cleanTargets = @(
+            (Join-Path $root 'hybrid\data\schoolsvs.db'),
+            (Join-Path $root 'hybrid\data\schoolsvs.db-wal'),
+            (Join-Path $root 'hybrid\data\schoolsvs.db-shm'),
+            (Join-Path $root 'hybrid\data\backups'),
+            (Join-Path $root 'hybrid\output')
+          )
+          foreach ($target in $cleanTargets) {
+            if (Test-Path $target) { Remove-Item $target -Recurse -Force }
+          }
+
+      - name: Add embedded Python
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $runtime = Join-Path $PWD 'dist\SchoolSVS_Portable\hybrid\runtime'
+          New-Item -ItemType Directory -Force -Path $runtime | Out-Null
+          $zip = Join-Path $env:RUNNER_TEMP 'python-embed.zip'
+          Invoke-WebRequest `
+            -Uri 'https://www.python.org/ftp/python/3.11.9/python-3.11.9-embed-amd64.zip' `
+            -OutFile $zip
+          Expand-Archive -Path $zip -DestinationPath $runtime -Force
+          if (!(Test-Path (Join-Path $runtime 'python.exe'))) {
+            throw 'Embedded python.exe was not created.'
+          }
+
+      - name: Portable smoke test
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $python = Join-Path $PWD 'dist\SchoolSVS_Portable\hybrid\runtime\python.exe'
+          & $python -m compileall -q 'dist\SchoolSVS_Portable\hybrid\app'
+          if ($LASTEXITCODE -ne 0) { throw 'Portable Python compile test failed.' }
+          & $python 'dist\SchoolSVS_Portable\hybrid\tests\test_server_runtime.py'
+          if ($LASTEXITCODE -ne 0) { throw 'Dynamic-port smoke test failed.' }
+
+      - name: Create portable ZIP
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Compress-Archive `
+            -Path 'dist\SchoolSVS_Portable\*' `
+            -DestinationPath 'dist\SchoolSVS_Portable_Windows.zip' `
+            -Force
+
+      - name: Upload portable artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SchoolSVS_Portable_Windows
+          path: dist/SchoolSVS_Portable_Windows.zip
+          if-no-files-found: error
+          retention-days: 14
