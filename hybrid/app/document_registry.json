@@ -1,5 +1,5 @@
 {
-  "version": "0.9.0-atoz-input",
+  "version": "0.10.0-student-profiles",
   "source": {
     "title": "2026. 학교폭력 사안처리 세부설명 A to Z (Q&A 포함)",
     "publisher": "충청북도교육청 인성시민과",
@@ -23,6 +23,7 @@
       "automation": "auto_candidate",
       "source_page": 40,
       "template": "form10_학교폭력_사안접수보고서.hwpx",
+      "student_profile_source": "case._hybrid.studentProfiles",
       "fields": {
         "SCHOOL_NAME": "school.name",
         "CASE_NO": "case.caseNo",
@@ -37,8 +38,9 @@
         "INCIDENT_DATE": "case.incidentDate",
         "INCIDENT_PLACE": "case.incidentPlace",
         "VIOLENCE_TYPE": "case.violenceType",
-        "VICTIM_NAMES": "victims.names",
-        "PERP_NAMES": "perps.names",
+        "VICTIM_NAMES": "students.victims.names",
+        "PERP_NAMES": "students.perps.names",
+        "RELATED_STUDENT_ROWS": "students.all.form10Rows",
         "INCIDENT_SUMMARY": "case.summary",
         "SEPARATION": "case.separation",
         "SEPARATION_PERIOD": "case.sepPeriod",
@@ -65,12 +67,7 @@
         "OFFICE_REPORT_DATE": "case.officeDate",
         "TEACHER_NAME": "teacher.name",
         "TEACHER_POSITION": "teacher.position"
-      },
-      "remaining_data_gaps": [
-        "관련학생별 학교명·학번·성별의 구조화 데이터",
-        "관련학생별 보호자 통보 일시·방법의 개별 기록",
-        "관련학생별 학생선수·장애학생·특수교육대상자·다문화학생·탈북학생 여부"
-      ]
+      }
     },
     "form12_investigation_report": {
       "label": "[서식12] 학교폭력 사안조사 보고서",
@@ -79,11 +76,13 @@
       "automation": "auto_candidate",
       "source_page": 48,
       "template": "form12_학교폭력_사안조사보고서.hwpx",
+      "student_profile_source": "case._hybrid.studentProfiles",
       "fields": {
         "SCHOOL_NAME": "school.name",
         "CASE_NO": "case.caseNo",
-        "VICTIM_NAMES": "victims.names",
-        "PERP_NAMES": "perps.names",
+        "VICTIM_NAMES": "students.victims.names",
+        "PERP_NAMES": "students.perps.names",
+        "RELATED_STUDENT_ROWS": "students.all.form12Rows",
         "INCIDENT_SUMMARY": "case.summary",
         "DAMAGE": "case.damage",
         "EVIDENCE": "case.evidence",
@@ -106,8 +105,8 @@
         "SCHOOL_NAME": "school.name",
         "CASE_NO": "case.caseNo",
         "COMMITTEE_DATE": "case.committeeDate",
-        "VICTIM_NAMES": "victims.names",
-        "PERP_NAMES": "perps.names",
+        "VICTIM_NAMES": "students.victims.names",
+        "PERP_NAMES": "students.perps.names",
         "INCIDENT_SUMMARY": "case.summary"
       }
     },
@@ -122,8 +121,8 @@
         "SCHOOL_NAME": "school.name",
         "CASE_NO": "case.caseNo",
         "COMMITTEE_DATE": "case.committeeDate",
-        "VICTIM_NAMES": "victims.names",
-        "PERP_NAMES": "perps.names",
+        "VICTIM_NAMES": "students.victims.names",
+        "PERP_NAMES": "students.perps.names",
         "INCIDENT_SUMMARY": "case.summary"
       }
     },
@@ -134,11 +133,14 @@
       "automation": "auto_candidate",
       "source_page": 75,
       "template": "form20_학교장_자체해결_동의서.hwpx",
+      "student_profile_source": "case._hybrid.studentProfiles",
       "fields": {
         "SCHOOL_NAME": "school.name",
         "CASE_NO": "case.caseNo",
-        "VICTIM_NAMES": "victims.names",
-        "PERP_NAMES": "perps.names"
+        "VICTIM_NAMES": "students.victims.names",
+        "PERP_NAMES": "students.perps.names",
+        "RELATED_STUDENT_ROWS": "students.all.consentRows",
+        "VICTIM_STUDENT_ROWS": "students.victims.consentRows"
       }
     },
     "form21_close_consent": {
@@ -148,11 +150,13 @@
       "automation": "auto_candidate",
       "source_page": 76,
       "template": "form21_학교장_종결처리_동의서.hwpx",
+      "student_profile_source": "case._hybrid.studentProfiles",
       "fields": {
         "SCHOOL_NAME": "school.name",
         "CASE_NO": "case.caseNo",
-        "VICTIM_NAMES": "victims.names",
-        "PERP_NAMES": "perps.names"
+        "VICTIM_NAMES": "students.victims.names",
+        "PERP_NAMES": "students.perps.names",
+        "VICTIM_STUDENT_ROWS": "students.victims.consentRows"
       }
     },
     "form22_result_report": {
@@ -162,11 +166,13 @@
       "automation": "auto_candidate",
       "source_page": 77,
       "template": "form22_학교장_처리결과_보고서.hwpx",
+      "student_profile_source": "case._hybrid.studentProfiles",
       "fields": {
         "SCHOOL_NAME": "school.name",
         "CASE_NO": "case.caseNo",
-        "VICTIM_NAMES": "victims.names",
-        "PERP_NAMES": "perps.names",
+        "VICTIM_NAMES": "students.victims.names",
+        "PERP_NAMES": "students.perps.names",
+        "RELATED_STUDENT_ROWS": "students.all.consentRows",
         "CLOSED_DATE": "case.closedDate"
       }
     }
