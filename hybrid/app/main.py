@@ -39,8 +39,8 @@ from workflow import calculate_deadlines, load_rules, validate_case, workflow_st
 
 ROOT = Path(__file__).resolve().parents[2]
 HOST = "127.0.0.1"
-PORT = int(os.environ.get("SCHOOLSVS_PORT", "8768"))
-VERSION = "0.17.0"
+REQUESTED_PORT = int(os.environ.get("SCHOOLSVS_PORT", "0") or "0")
+VERSION = "0.18.0"
 APP_ID = "schoolsvs-hybrid"
 
 FORM10_DIRECT_TOKENS = {
@@ -53,7 +53,7 @@ FORM10_DIRECT_TOKENS = {
 
 
 class Handler(BaseHTTPRequestHandler):
-    server_version = "SchoolSVS-Hybrid/0.17"
+    server_version = "SchoolSVS-Hybrid/0.18"
 
     def _json(self, payload, status=200):
         body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
@@ -93,12 +93,13 @@ class Handler(BaseHTTPRequestHandler):
 
         if path == "/api/health":
             rules = load_rules()
+            actual_port = int(self.server.server_address[1])
             return self._json({
                 "ok": True,
                 "appId": APP_ID,
                 "engine": "python",
                 "version": VERSION,
-                "port": PORT,
+                "port": actual_port,
                 "rulesVersion": rules.get("version"),
                 "documentRegistryVersion": load_registry().get("version"),
             })
@@ -313,13 +314,23 @@ class Handler(BaseHTTPRequestHandler):
         print("[SchoolSVS]", fmt % args)
 
 
+def create_server(port: int | None = None) -> ThreadingHTTPServer:
+    bind_port = REQUESTED_PORT if port is None else int(port)
+    return ThreadingHTTPServer((HOST, bind_port), Handler)
+
+
 def run():
     init_db()
     TEMPLATE_DIR.mkdir(parents=True, exist_ok=True)
-    url = f"http://{HOST}:{PORT}/hybrid/web/index.html"
+    server = create_server()
+    actual_port = int(server.server_address[1])
+    url = f"http://{HOST}:{actual_port}/hybrid/web/index.html"
     print(f"SchoolSVS Hybrid v{VERSION}: {url}")
     threading.Timer(0.8, lambda: webbrowser.open(url)).start()
-    ThreadingHTTPServer((HOST, PORT), Handler).serve_forever()
+    try:
+        server.serve_forever()
+    finally:
+        server.server_close()
 
 
 if __name__ == "__main__":
