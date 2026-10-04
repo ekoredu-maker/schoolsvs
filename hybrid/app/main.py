@@ -22,16 +22,17 @@ from hwpx_engine import (
 from mapping_service import build_mapping_workspace, save_mapping, source_catalog
 from storage import delete_case, get_case, get_value, init_db, list_cases, set_value, upsert_case
 from student_profiles import consent_readiness, profile_readiness
+from template_builder import build_template, load_build_report
 from workflow import calculate_deadlines, load_rules, validate_case, workflow_state
 
 ROOT = Path(__file__).resolve().parents[2]
 HOST = "127.0.0.1"
 PORT = int(os.environ.get("SCHOOLSVS_PORT", "8768"))
-VERSION = "0.11.0"
+VERSION = "0.12.0"
 
 
 class Handler(BaseHTTPRequestHandler):
-    server_version = "SchoolSVS-Hybrid/0.11"
+    server_version = "SchoolSVS-Hybrid/0.12"
 
     def _json(self, payload, status=200):
         body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
@@ -87,7 +88,7 @@ class Handler(BaseHTTPRequestHandler):
                 "ok": True,
                 "documents": docs,
                 "templateDir": str(TEMPLATE_DIR),
-                "readyCount": sum(1 for d in docs if d.get("templateReady")),
+                "readyCount": sum(1 for d in docs if d.get("builtTemplateReady")),
             })
         if path == "/api/documents/sources":
             return self._json({"ok": True, "sources": source_catalog()})
@@ -98,6 +99,10 @@ class Handler(BaseHTTPRequestHandler):
             except KeyError as e:
                 return self._json({"ok": False, "error": str(e)}, 404)
             return self._json({"ok": True, "workspace": workspace})
+        if path == "/api/documents/build-report":
+            key = (query.get("key") or [""])[0]
+            report = load_build_report(key)
+            return self._json({"ok": bool(report), "report": report}, 200 if report else 404)
         if path == "/api/documents/inspect":
             key = (query.get("key") or [""])[0]
             registry = load_registry()
@@ -208,6 +213,12 @@ class Handler(BaseHTTPRequestHandler):
                     return self._json({"ok": False, "error": "매핑 항목 형식이 올바르지 않습니다."}, 400)
                 result = save_mapping(key, items, status=str(data.get("status") or "draft"))
                 return self._json({"ok": True, "mapping": result})
+            if path == "/api/documents/build":
+                key = str(data.get("documentKey") or "").strip()
+                if not key:
+                    return self._json({"ok": False, "error": "서식키가 필요합니다."}, 400)
+                report = build_template(key)
+                return self._json({"ok": True, "report": report})
             if path == "/api/documents/generate":
                 key = str(data.get("documentKey") or "").strip()
                 case = data.get("case")
