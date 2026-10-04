@@ -64,8 +64,8 @@ class DocumentReadinessTests(unittest.TestCase):
                     "otherSchoolRelated": False, "victimRecoveryOpinion": "참여 검토", "perpRecoveryOpinion": "대화 의사 있음"
                 },
                 "studentProfiles": [
-                    {"role": "victim", "name": "피해학생", "schoolName": "테스트초", "grade": "6", "classNo": "1", "number": "1", "gender": "여", "guardianNoticeAt": "2026-10-05T09:20", "guardianNoticeMethod": "유선"},
-                    {"role": "perp", "name": "가해학생", "schoolName": "테스트초", "grade": "6", "classNo": "2", "number": "2", "gender": "남", "guardianNoticeAt": "2026-10-05T09:25", "guardianNoticeMethod": "유선"}
+                    {"role": "victim", "name": "피해학생", "schoolName": "테스트초", "grade": "6", "classNo": "1", "number": "1", "gender": "여", "guardianNoticeAt": "2026-10-05T09:20", "guardianNoticeMethod": "유선", "recoveryGuidance": "O"},
+                    {"role": "perp", "name": "가해학생", "schoolName": "테스트초", "grade": "6", "classNo": "2", "number": "2", "gender": "남", "guardianNoticeAt": "2026-10-05T09:25", "guardianNoticeMethod": "유선", "recoveryGuidance": "X"}
                 ]
             }
         }
@@ -101,6 +101,15 @@ class DocumentReadinessTests(unittest.TestCase):
         students = next(x for x in result["sections"] if x["key"] == "students")
         self.assertFalse(students["ready"])
         self.assertTrue(any("보호자 통보방법" in x for x in students["missing"]))
+
+    def test_missing_recovery_guidance_blocks_generation(self):
+        self.prepare_templates()
+        case = self.complete_case()
+        case["_hybrid"]["studentProfiles"][0]["recoveryGuidance"] = ""
+        result = document_readiness.form10_readiness(case)
+        self.assertFalse(result["ready"])
+        students = next(x for x in result["sections"] if x["key"] == "students")
+        self.assertTrue(any("관계회복 프로그램 안내여부" in x for x in students["missing"]))
 
     def test_missing_source_template_blocks_generation_even_when_content_complete(self):
         result = document_readiness.form10_readiness(self.complete_case())
