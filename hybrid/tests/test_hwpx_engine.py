@@ -45,7 +45,8 @@ class HWPXEngineTests(unittest.TestCase):
                     "fields": {
                         "SCHOOL_NAME": "school.name",
                         "CASE_NO": "case.caseNo",
-                        "VICTIM_NAMES": "victims.names",
+                        "VICTIM_NAMES": "students.victims.names",
+                        "RELATED_STUDENT_ROWS": "students.all.form10Rows",
                         "INCIDENT_SUMMARY": "case.summary"
                     }
                 }
@@ -57,7 +58,7 @@ class HWPXEngineTests(unittest.TestCase):
             zf.writestr("mimetype", "application/hwp+zip")
             zf.writestr(
                 "Contents/section0.xml",
-                '<?xml version="1.0" encoding="UTF-8"?><root><p>{{SCHOOL_NAME}}</p><p>{{CASE_NO}}</p><p>{{VICTIM_NAMES}}</p><p>{{INCIDENT_SUMMARY}}</p></root>'
+                '<?xml version="1.0" encoding="UTF-8"?><root><p>{{SCHOOL_NAME}}</p><p>{{CASE_NO}}</p><p>{{VICTIM_NAMES}}</p><p>{{RELATED_STUDENT_ROWS}}</p><p>{{INCIDENT_SUMMARY}}</p></root>'
             )
             zf.writestr("META-INF/manifest.xml", '<?xml version="1.0" encoding="UTF-8"?><manifest/>')
 
@@ -77,6 +78,34 @@ class HWPXEngineTests(unittest.TestCase):
             "summary": "교실에서 발생한 테스트 사안",
             "victims": [{"name": "피해학생1"}, {"name": "피해학생2"}],
             "perps": [{"name": "가해학생"}],
+            "_hybrid": {
+                "studentProfiles": [
+                    {
+                        "profileId": "victim-0", "role": "victim", "legacyIndex": 0,
+                        "name": "피해학생1", "schoolName": "제천테스트초", "grade": "6",
+                        "classNo": "1", "number": "3", "gender": "여",
+                        "guardianNoticeAt": "2026-10-04T10:10", "guardianNoticeMethod": "유선",
+                        "athlete": False, "disabled": False, "specialEducation": False,
+                        "multicultural": False, "northKoreanDefector": False,
+                    },
+                    {
+                        "profileId": "victim-1", "role": "victim", "legacyIndex": 1,
+                        "name": "피해학생2", "schoolName": "제천테스트초", "grade": "6",
+                        "classNo": "1", "number": "4", "gender": "남",
+                        "guardianNoticeAt": "2026-10-04T10:15", "guardianNoticeMethod": "문자",
+                        "athlete": False, "disabled": False, "specialEducation": False,
+                        "multicultural": False, "northKoreanDefector": False,
+                    },
+                    {
+                        "profileId": "perp-0", "role": "perp", "legacyIndex": 0,
+                        "name": "가해학생", "schoolName": "제천테스트초", "grade": "6",
+                        "classNo": "2", "number": "7", "gender": "남",
+                        "guardianNoticeAt": "2026-10-04T10:20", "guardianNoticeMethod": "유선",
+                        "athlete": True, "disabled": False, "specialEducation": False,
+                        "multicultural": False, "northKoreanDefector": False,
+                    },
+                ]
+            }
         }
 
     def _new_original_bytes(self):
@@ -93,9 +122,9 @@ class HWPXEngineTests(unittest.TestCase):
 
     def test_inspect_template_finds_tokens(self):
         info = hwpx_engine.inspect_template(self.template_dir / "sample.hwpx")
-        self.assertEqual(info["tokenCount"], 4)
+        self.assertEqual(info["tokenCount"], 5)
         self.assertIn("CASE_NO", info["tokens"])
-        self.assertIn("INCIDENT_SUMMARY", info["tokens"])
+        self.assertIn("RELATED_STUDENT_ROWS", info["tokens"])
         self.assertTrue(any("CASE_NO" in item for group in info["textSamples"] for item in group["items"]))
 
     def test_generate_document_replaces_tokens(self):
@@ -108,7 +137,16 @@ class HWPXEngineTests(unittest.TestCase):
         self.assertIn("제천테스트초", text)
         self.assertIn("2026-0001", text)
         self.assertIn("피해학생1, 피해학생2", text)
+        self.assertIn("학생선수", text)
+        self.assertIn("유선", text)
         self.assertNotIn("{{CASE_NO}}", text)
+
+    def test_build_context_uses_structured_profiles(self):
+        context = hwpx_engine.build_context(self.sample_case())
+        self.assertEqual(context["students.victims.names"], "피해학생1, 피해학생2")
+        self.assertEqual(context["students.perps.names"], "가해학생")
+        self.assertIn("6-2-7", context["students.all.form10Rows"])
+        self.assertIn("학생선수", context["students.all.form10Rows"])
 
     def test_document_list_reports_template_ready(self):
         docs = hwpx_engine.list_documents()
