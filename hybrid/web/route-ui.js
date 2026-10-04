@@ -125,7 +125,20 @@
     const script = document.createElement('script');
     script.src = 'atoz-ui.js';
     script.dataset.schoolsvsAtoz = '1';
+    script.addEventListener('load', () => {
+      if (!document.querySelector('script[data-schoolsvs-anonymous]')) {
+        const helper = document.createElement('script');
+        helper.src = 'atoz-anonymous-ui.js';
+        helper.dataset.schoolsvsAnonymous = '1';
+        document.body.appendChild(helper);
+      }
+    });
     document.body.appendChild(script);
+  } else if (!document.querySelector('script[data-schoolsvs-anonymous]')) {
+    const helper = document.createElement('script');
+    helper.src = 'atoz-anonymous-ui.js';
+    helper.dataset.schoolsvsAnonymous = '1';
+    document.body.appendChild(helper);
   }
   if (!document.querySelector('script[data-schoolsvs-students]')) {
     const script = document.createElement('script');
