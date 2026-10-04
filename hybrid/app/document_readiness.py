@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Any
 
-from hwpx_engine import TEMPLATE_DIR, load_registry
+from hwpx_engine import BUILT_DIR, TEMPLATE_DIR, load_registry
 from student_profiles import profile_readiness
 from workflow import atoz_form10_readiness
 
@@ -22,13 +21,7 @@ def _section(key: str, label: str, missing: list[str], total: int) -> dict[str, 
     missing_count = len(missing)
     completed = max(0, total - missing_count)
     score = round(completed / total * 100) if total else 100
-    return {
-        "key": key,
-        "label": label,
-        "ready": not missing,
-        "score": score,
-        "missing": missing,
-    }
+    return {"key": key, "label": label, "ready": not missing, "score": score, "missing": missing}
 
 
 def _basic_section(case: dict[str, Any], settings: dict[str, Any]) -> dict[str, Any]:
@@ -70,8 +63,6 @@ def _initial_section(case: dict[str, Any]) -> dict[str, Any]:
         missing.append("교육(지원)청 보고 여부")
     elif office == "보고완료" and _blank(case.get("officeDate")):
         missing.append("교육(지원)청 보고일")
-
-    # 분리 3요소 + 보고 2요소를 기준으로 단순 준비도를 산정한다.
     return _section("initial", "초기대응", missing, 5)
 
 
@@ -109,24 +100,19 @@ def _template_state(document_key: str) -> dict[str, Any]:
     registry = load_registry()
     doc = (registry.get("documents") or {}).get(document_key) or {}
     template_name = str(doc.get("template") or "")
-    template_path = TEMPLATE_DIR / template_name if template_name else None
-    template_ready = bool(template_path and template_path.exists())
-    mapping_ready = bool(doc.get("fields"))
+    source_path = TEMPLATE_DIR / template_name if template_name else None
+    built_path = BUILT_DIR / template_name if template_name else None
     return {
-        "templateReady": template_ready,
-        "mappingReady": mapping_ready,
+        "templateReady": bool(source_path and source_path.exists()),
+        "builtTemplateReady": bool(built_path and built_path.exists()),
+        "mappingReady": bool(doc.get("fields")),
         "template": template_name,
     }
 
 
 def form10_readiness(case: dict[str, Any], settings: dict[str, Any] | None = None) -> dict[str, Any]:
     settings = settings or {}
-    sections = [
-        _basic_section(case, settings),
-        _initial_section(case),
-        _student_section(case),
-        _atoz_section(case),
-    ]
+    sections = [_basic_section(case, settings), _initial_section(case), _student_section(case), _atoz_section(case)]
     template = _template_state("form10_case_report")
     content_ready = all(bool(x.get("ready")) for x in sections)
     score = round(sum(int(x.get("score") or 0) for x in sections) / len(sections)) if sections else 100
@@ -135,14 +121,16 @@ def form10_readiness(case: dict[str, Any], settings: dict[str, Any] | None = Non
         for item in section.get("missing") or []:
             blocking.append(f"{section['label']}: {item}")
     if not template["templateReady"]:
-        blocking.append("공식 서식10 HWPX 템플릿 미등록")
+        blocking.append("공식 서식10 HWPX 원본 미등록")
+    elif not template["builtTemplateReady"]:
+        blocking.append("서식10 생성용 템플릿 미제작")
     if not template["mappingReady"]:
         blocking.append("서식10 필드 매핑 미등록")
     return {
         "documentKey": "form10_case_report",
         "label": "[서식10] 학교폭력 사안접수 보고서",
         "contentReady": content_ready,
-        "ready": content_ready and template["templateReady"] and template["mappingReady"],
+        "ready": content_ready and template["templateReady"] and template["builtTemplateReady"] and template["mappingReady"],
         "score": score,
         "sections": sections,
         "blocking": blocking,
@@ -154,12 +142,13 @@ def document_readiness(document_key: str, case: dict[str, Any], settings: dict[s
     if document_key == "form10_case_report":
         return form10_readiness(case, settings=settings)
     template = _template_state(document_key)
+    ready = template["templateReady"] and template["builtTemplateReady"] and template["mappingReady"]
     return {
         "documentKey": document_key,
         "contentReady": True,
-        "ready": template["templateReady"] and template["mappingReady"],
+        "ready": ready,
         "score": 100,
         "sections": [],
-        "blocking": [] if template["templateReady"] and template["mappingReady"] else ["템플릿 또는 필드 매핑을 확인하세요."],
+        "blocking": [] if ready else ["공식 원본·생성용 템플릿·필드 매핑을 확인하세요."],
         **template,
     }
