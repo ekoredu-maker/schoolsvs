@@ -7,19 +7,20 @@ import threading
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import unquote, urlparse
+from urllib.parse import parse_qs, quote, unquote, urlparse
 
+from hwpx_engine import TEMPLATE_DIR, generate_document, inspect_template, list_documents, load_registry
 from storage import delete_case, get_case, get_value, init_db, list_cases, set_value, upsert_case
 from workflow import calculate_deadlines, load_rules, validate_case, workflow_state
 
 ROOT = Path(__file__).resolve().parents[2]
 HOST = "127.0.0.1"
 PORT = int(os.environ.get("SCHOOLSVS_PORT", "8768"))
-VERSION = "0.5.0"
+VERSION = "0.6.0"
 
 
 class Handler(BaseHTTPRequestHandler):
-    server_version = "SchoolSVS-Hybrid/0.5"
+    server_version = "SchoolSVS-Hybrid/0.6"
 
     def _json(self, payload, status=200):
         body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
@@ -42,7 +43,11 @@ class Handler(BaseHTTPRequestHandler):
         mime, _ = mimetypes.guess_type(str(path))
         data = path.read_bytes()
         self.send_response(200)
-        self.send_header("Content-Type", (mime or "application/octet-stream") + ("; charset=utf-8" if mime and mime.startswith("text/") else ""))
+        content_type = mime or "application/octet-stream"
+        if path.suffix.lower() == ".hwpx":
+            content_type = "application/octet-stream"
+            self.send_header("Content-Disposition", f"attachment; filename*=UTF-8''{quote(path.name)}")
+        self.send_header("Content-Type", content_type + ("; charset=utf-8" if content_type.startswith("text/") else ""))
         self.send_header("Content-Length", str(len(data)))
         self.send_header("Cache-Control", "no-store")
         self.end_headers()
@@ -51,12 +56,42 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         parsed = urlparse(self.path)
         path = unquote(parsed.path)
+        query = parse_qs(parsed.query)
 
         if path == "/api/health":
             rules = load_rules()
-            return self._json({"ok": True, "engine": "python", "version": VERSION, "port": PORT, "rulesVersion": rules.get("version")})
+            return self._json({
+                "ok": True,
+                "engine": "python",
+                "version": VERSION,
+                "port": PORT,
+                "rulesVersion": rules.get("version"),
+                "documentRegistryVersion": load_registry().get("version"),
+            })
         if path == "/api/rules":
             return self._json({"ok": True, "rules": load_rules()})
+        if path == "/api/documents":
+            docs = list_documents()
+            return self._json({
+                "ok": True,
+                "documents": docs,
+                "templateDir": str(TEMPLATE_DIR),
+                "readyCount": sum(1 for d in docs if d.get("templateReady")),
+            })
+        if path == "/api/documents/inspect":
+            key = (query.get("key") or [""])[0]
+            registry = load_registry()
+            doc = (registry.get("documents") or {}).get(key)
+            if not doc:
+                return self._json({"ok": False, "error": "등록되지 않은 문서입니다."}, 404)
+            template = TEMPLATE_DIR / str(doc.get("template") or "")
+            try:
+                info = inspect_template(template)
+            except FileNotFoundError as e:
+                return self._json({"ok": False, "error": str(e), "templateReady": False}, 404)
+            except ValueError as e:
+                return self._json({"ok": False, "error": str(e), "templateReady": True}, 400)
+            return self._json({"ok": True, "document": key, "inspection": info})
         if path == "/api/cases":
             return self._json({"ok": True, "cases": list_cases()})
         if path.startswith("/api/cases/"):
@@ -102,6 +137,27 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json({"ok": True, "case": data, "validation": result, "workflow": workflow_state(data)})
             if path == "/api/validate":
                 return self._json({"ok": True, "validation": validate_case(data), "workflow": workflow_state(data), "deadlines": calculate_deadlines(data)})
+            if path == "/api/documents/generate":
+                key = str(data.get("documentKey") or "").strip()
+                case = data.get("case")
+                if not case and data.get("caseId"):
+                    case = get_case(str(data.get("caseId")))
+                if not isinstance(case, dict):
+                    return self._json({"ok": False, "error": "문서 생성에 사용할 사안 데이터가 없습니다."}, 400)
+                settings = data.get("settings")
+                if not isinstance(settings, dict):
+                    settings = get_value("settings", {})
+                result = generate_document(key, case, settings=settings, output_name=data.get("outputName"))
+                relative = result.output_path.relative_to(ROOT).as_posix()
+                return self._json({
+                    "ok": True,
+                    "documentKey": result.document_key,
+                    "fileName": result.output_path.name,
+                    "downloadUrl": "/" + relative,
+                    "replacedTokens": result.replaced_tokens,
+                    "missingTokens": result.missing_tokens,
+                    "warning": "템플릿 구조 검증 전 시험 생성본입니다." if result.missing_tokens else None,
+                })
             if path == "/api/state":
                 cases = data.get("cases") or []
                 incoming_ids = {str(case.get("id")) for case in cases if case.get("id")}
@@ -119,7 +175,9 @@ class Handler(BaseHTTPRequestHandler):
                 set_value("settings", data.get("settings", {}))
                 return self._json({"ok": True, "imported": len(cases), "removed": removed})
             self._json({"ok": False, "error": "지원하지 않는 API입니다."}, 404)
-        except ValueError as e:
+        except FileNotFoundError as e:
+            self._json({"ok": False, "error": str(e)}, 404)
+        except (ValueError, KeyError) as e:
             self._json({"ok": False, "error": str(e)}, 400)
         except Exception as e:
             self._json({"ok": False, "error": f"서버 처리 오류: {e}"}, 500)
@@ -137,6 +195,7 @@ class Handler(BaseHTTPRequestHandler):
 
 def run():
     init_db()
+    TEMPLATE_DIR.mkdir(parents=True, exist_ok=True)
     url = f"http://{HOST}:{PORT}/hybrid/web/index.html"
     print(f"SchoolSVS Hybrid v{VERSION}: {url}")
     threading.Timer(0.8, lambda: webbrowser.open(url)).start()
