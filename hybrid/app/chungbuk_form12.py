@@ -234,10 +234,12 @@ def _analyze_section(raw: bytes) -> dict[str, Any]:
     expected_cols = int(main.get("expectedCols") or 0)
     actual_rows = int(table.get("rowCnt") or 0)
     actual_cols = int(table.get("colCnt") or 0)
+    stable_labels = [item for item in checked if item.get("expectedText")]
     reference_match = (
         actual_rows == expected_rows
         and actual_cols == expected_cols
-        and all(item["found"] and item["textMatched"] is not False for item in checked)
+        and bool(stable_labels)
+        and all(item["found"] and item["textMatched"] is True for item in stable_labels)
     )
     source_year = 2025 if "2025" in whole_text or reference_match else None
     uses_old_multicultural_term = "다문화학생" in whole_text
