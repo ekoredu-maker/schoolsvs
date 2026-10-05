@@ -48,16 +48,28 @@
   const caseLabel = document.getElementById('dockCaseLabel');
   caseLabel?.insertAdjacentElement('afterend', compact);
 
+  let compactQueued = false;
   function updateCompact(){
-    if (!dock.classList.contains('collapsed')) { compact.style.display='none'; return; }
-    compact.style.display='inline';
+    compactQueued = false;
+    const shouldShow = dock.classList.contains('collapsed');
+    const targetDisplay = shouldShow ? 'inline' : 'none';
+    if (compact.style.display !== targetDisplay) compact.style.display = targetDisplay;
+    if (!shouldShow) return;
     const stage = document.getElementById('dockStage')?.textContent?.trim() || '-';
     const deadline = document.getElementById('dockDeadline')?.textContent?.trim() || '';
     const next = document.getElementById('dockNext')?.textContent?.trim() || '';
-    compact.textContent = `${stage} · ${deadline}${next ? ' · ' + next : ''}`;
+    const text = `${stage} · ${deadline}${next ? ' · ' + next : ''}`;
+    if (compact.textContent !== text) compact.textContent = text;
   }
-  new MutationObserver(updateCompact).observe(dock,{subtree:true,childList:true,characterData:true,attributes:true});
-  toggle?.addEventListener('click',()=>setTimeout(updateCompact,0));
+  function queueCompactUpdate(){
+    if (compactQueued) return;
+    compactQueued = true;
+    requestAnimationFrame(updateCompact);
+  }
+  // 중요: attributes 감시는 금지한다. compact.style 변경을 observer가 다시 감지하면
+  // Edge/Chrome 렌더러가 무한 피드백에 빠질 수 있다.
+  new MutationObserver(queueCompactUpdate).observe(dock,{subtree:true,childList:true,characterData:true});
+  toggle?.addEventListener('click',()=>setTimeout(queueCompactUpdate,0));
   updateCompact();
 
   const savePill = document.createElement('span');
