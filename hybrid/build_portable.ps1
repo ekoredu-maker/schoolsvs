@@ -1,6 +1,6 @@
 param(
   [string]$PythonVersion = "3.11.9",
-  [string]$PackageVersion = "0.19.0"
+  [string]$PackageVersion = "0.20.2"
 )
 
 $ErrorActionPreference = "Stop"
@@ -106,12 +106,17 @@ If launcher <> "" Then shell.Run "wscript.exe " & Chr(34) & launcher & Chr(34), 
   $rootBat = Join-Path $PackageRoot "SchoolSVS_Diagnostic.bat"
   @'
 @echo off
+setlocal
 cd /d "%~dp0hybrid"
-if exist SchoolSVS_Diagnostic.bat (
-  call SchoolSVS_Diagnostic.bat
+if exist "SchoolSVS_진단실행.bat" (
+  call "SchoolSVS_진단실행.bat"
 ) else (
-  call run_schoolsvs.bat
+  echo [ERROR] Diagnostic launcher is missing: hybrid\SchoolSVS_진단실행.bat
+  echo.
+  pause
+  exit /b 2
 )
+endlocal
 '@ | Set-Content -Path $rootBat -Encoding Default
 
   Write-Host "[6/7] Cleaning development-only files..."
