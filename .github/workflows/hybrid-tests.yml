@@ -24,5 +24,8 @@ jobs:
       - name: Compile Python modules
         run: python -m compileall -q hybrid/app hybrid/tests
 
+      - name: Check hybrid JavaScript syntax
+        run: find hybrid/web -maxdepth 1 -name '*.js' -print0 | xargs -0 -n1 node --check
+
       - name: Run regression tests
         run: python -m unittest discover -s hybrid/tests -p 'test_*.py' -v
