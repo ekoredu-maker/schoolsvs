@@ -50,4 +50,11 @@
   const observer=new MutationObserver(()=>{apply();if(!policy)loadPolicy();});
   observer.observe(list,{childList:true,subtree:true});
   setTimeout(loadPolicy,300);
+
+  if(!document.querySelector('script[data-schoolsvs-backup-refresh]')){
+    const script=document.createElement('script');
+    script.src='backup-import-refresh.js';
+    script.dataset.schoolsvsBackupRefresh='1';
+    document.body.appendChild(script);
+  }
 })();
