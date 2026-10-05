@@ -32,7 +32,7 @@ try {
     New-Item -ItemType Directory -Path (Join-Path $HybridOut "templates") | Out-Null
   }
 
-  foreach ($name in @("SchoolSVS.vbs", "SchoolSVS_진단실행.bat", "run_schoolsvs.bat", "PORTABLE_README.txt")) {
+  foreach ($name in @("SchoolSVS.vbs", "SchoolSVS_종료.vbs", "SchoolSVS_진단실행.bat", "run_schoolsvs.bat", "PORTABLE_README.txt")) {
     $source = Join-Path $HybridDir $name
     if (Test-Path $source) { Copy-Item $source (Join-Path $HybridOut $name) -Force }
   }
@@ -43,7 +43,6 @@ try {
   }
 
   Write-Host "[3/7] Downloading official Python Embedded Runtime $PythonVersion..."
-  $pyCompact = $PythonVersion -replace '\.', ''
   $runtimeZip = Join-Path $TempDir "python-embed.zip"
   $runtimeUrl = "https://www.python.org/ftp/python/$PythonVersion/python-$PythonVersion-embed-amd64.zip"
   Invoke-WebRequest -Uri $runtimeUrl -OutFile $runtimeZip -UseBasicParsing
@@ -79,6 +78,17 @@ End If
 shell.Run "wscript.exe " & Chr(34) & launcher & Chr(34), 0, False
 '@ | Set-Content -Path $rootVbs -Encoding Default
 
+  $rootStop = Join-Path $PackageRoot "SchoolSVS_종료.vbs"
+  @'
+Option Explicit
+Dim shell, fso, baseDir, launcher
+Set shell = CreateObject("WScript.Shell")
+Set fso = CreateObject("Scripting.FileSystemObject")
+baseDir = fso.GetParentFolderName(WScript.ScriptFullName)
+launcher = fso.BuildPath(baseDir, "hybrid\SchoolSVS_종료.vbs")
+If fso.FileExists(launcher) Then shell.Run "wscript.exe " & Chr(34) & launcher & Chr(34), 0, True
+'@ | Set-Content -Path $rootStop -Encoding Default
+
   $rootBat = Join-Path $PackageRoot "SchoolSVS_진단실행.bat"
   @'
 @echo off
@@ -96,7 +106,7 @@ call SchoolSVS_진단실행.bat
 
   Write-Host ""
   Write-Host "Build complete: $ZipOut"
-  Write-Host "End users run SchoolSVS.vbs. Python installation is not required."
+  Write-Host "Run SchoolSVS.vbs. Python installation is not required."
 }
 finally {
   if (Test-Path $TempDir) { Remove-Item $TempDir -Recurse -Force -ErrorAction SilentlyContinue }
