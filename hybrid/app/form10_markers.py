@@ -108,13 +108,31 @@ def _mark_violence(table:ET.Element,case:dict[str,Any])->dict[str,Any]:
     if row is None: raise ValueError("학교폭력 유형 행을 찾지 못했습니다.")
     selected,detail_required=_selected_violence_types(case); nodes=_texts(row)
     target=next((n for n in nodes if "신체폭력" in (n.text or "") and "언어폭력" in (n.text or "")),None)
-    if target is None: raise ValueError("학교폭력 유형 체크 영역을 찾지 못했습니다.")
-    target.text=" ".join(("■" if item in selected else "□")+item+("(접수여부:  )" if item=="아동학대" else "") for item in VIOLENCE_OPTIONS)+"  ※중복체크 가능(■, □)"
-    found=False
-    for node in nodes:
-        if node is target: found=True; continue
-        if found and any(x in (node.text or "") for x in ("아동학대(접수여부","성폭력(접수여부")): node.text=""
-    return {"selected":selected,"detailRequired":detail_required}
+    if target is not None:
+        target.text=" ".join(("■" if item in selected else "□")+item+("(접수여부:  )" if item=="아동학대" else "") for item in VIOLENCE_OPTIONS)+"  ※중복체크 가능(■, □)"
+        found=False
+        for node in nodes:
+            if node is target: found=True; continue
+            if found and any(x in (node.text or "") for x in ("아동학대(접수여부","성폭력(접수여부")): node.text=""
+        return {"selected":selected,"detailRequired":detail_required,"layout":"combined"}
+    marked={}
+    for item in VIOLENCE_OPTIONS:
+        label_index=next((i for i,n in enumerate(nodes) if item in (n.text or "")),None)
+        if label_index is None:
+            marked[item]=False
+            continue
+        checkbox=None
+        for i in range(label_index-1,max(-1,label_index-4),-1):
+            if (nodes[i].text or "").strip() in {"□","■"}:
+                checkbox=nodes[i]; break
+        if checkbox is None:
+            marked[item]=False
+            continue
+        checkbox.text="■" if item in selected else "□"
+        marked[item]=True
+    if not any(marked.values()):
+        raise ValueError("학교폭력 유형 체크 영역을 찾지 못했습니다.")
+    return {"selected":selected,"detailRequired":detail_required,"layout":"split_nodes","marked":marked}
 
 def _fill_atoz_cells(table:ET.Element,case:dict[str,Any])->dict[str,Any]:
     atoz=_atoz(case); report={}
