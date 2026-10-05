@@ -32,9 +32,16 @@ try {
     New-Item -ItemType Directory -Path (Join-Path $HybridOut "templates") | Out-Null
   }
 
-  foreach ($name in @("SchoolSVS.vbs", "SchoolSVS_종료.vbs", "SchoolSVS_진단실행.bat", "run_schoolsvs.bat", "PORTABLE_README.txt")) {
+  $baseFiles = @("SchoolSVS.vbs", "run_schoolsvs.bat", "PORTABLE_README.txt")
+  foreach ($name in $baseFiles) {
     $source = Join-Path $HybridDir $name
     if (Test-Path $source) { Copy-Item $source (Join-Path $HybridOut $name) -Force }
+  }
+  Get-ChildItem $HybridDir -Filter "SchoolSVS*.vbs" -File | ForEach-Object {
+    Copy-Item $_.FullName (Join-Path $HybridOut $_.Name) -Force
+  }
+  Get-ChildItem $HybridDir -Filter "SchoolSVS*.bat" -File | ForEach-Object {
+    Copy-Item $_.FullName (Join-Path $HybridOut $_.Name) -Force
   }
 
   foreach ($folder in @("data", "output", "mappings")) {
@@ -78,22 +85,33 @@ End If
 shell.Run "wscript.exe " & Chr(34) & launcher & Chr(34), 0, False
 '@ | Set-Content -Path $rootVbs -Encoding Default
 
-  $rootStop = Join-Path $PackageRoot "SchoolSVS_종료.vbs"
+  $rootStop = Join-Path $PackageRoot "SchoolSVS_Stop.vbs"
   @'
 Option Explicit
-Dim shell, fso, baseDir, launcher
+Dim shell, fso, baseDir, matches, launcher
 Set shell = CreateObject("WScript.Shell")
 Set fso = CreateObject("Scripting.FileSystemObject")
-baseDir = fso.GetParentFolderName(WScript.ScriptFullName)
-launcher = fso.BuildPath(baseDir, "hybrid\SchoolSVS_종료.vbs")
-If fso.FileExists(launcher) Then shell.Run "wscript.exe " & Chr(34) & launcher & Chr(34), 0, True
+baseDir = fso.BuildPath(fso.GetParentFolderName(WScript.ScriptFullName), "hybrid")
+launcher = ""
+For Each matches In fso.GetFolder(baseDir).Files
+  If LCase(Left(matches.Name, 9)) = "schoolsvs" And LCase(Right(matches.Name, 4)) = ".vbs" Then
+    If InStr(matches.Name, "SchoolSVS.vbs") = 0 Then
+      launcher = matches.Path
+    End If
+  End If
+Next
+If launcher <> "" Then shell.Run "wscript.exe " & Chr(34) & launcher & Chr(34), 0, True
 '@ | Set-Content -Path $rootStop -Encoding Default
 
-  $rootBat = Join-Path $PackageRoot "SchoolSVS_진단실행.bat"
+  $rootBat = Join-Path $PackageRoot "SchoolSVS_Diagnostic.bat"
   @'
 @echo off
 cd /d "%~dp0hybrid"
-call SchoolSVS_진단실행.bat
+if exist SchoolSVS_Diagnostic.bat (
+  call SchoolSVS_Diagnostic.bat
+) else (
+  call run_schoolsvs.bat
+)
 '@ | Set-Content -Path $rootBat -Encoding Default
 
   Write-Host "[6/7] Cleaning development-only files..."
