@@ -1,0 +1,70 @@
+{
+  "profileVersion": "0.19.0",
+  "documentKey": "form12_investigation_report",
+  "structuralReference": {
+    "year": 2025,
+    "title": "2025. 학교폭력 사안처리 세부설명 A to Z (서식모음집)",
+    "form": "[서식12] 학교폭력 사안조사 보고서",
+    "status": "verified_from_hwpx"
+  },
+  "currentGuidanceReference": {
+    "year": 2026,
+    "title": "2026. 학교폭력 사안처리 세부설명 A to Z (Q&A 포함)",
+    "formPages": [48, 49, 50, 51],
+    "status": "verified_from_pdf_text_only"
+  },
+  "pageMarker": "<서식12>",
+  "mainTable": {
+    "matchTexts": ["신고접수 일자", "사안 경위", "학교장 자체해결", "학교폭력의 심각성", "가해학생 학교폭력 재발 현황"],
+    "expectedRows": 38,
+    "expectedCols": 14,
+    "verifiedTableId2025": "1909429775"
+  },
+  "verifiedCells2025": {
+    "receivedAtLabel": {"row": 0, "col": 0, "expectedText": "신고접수 일자"},
+    "receivedAt": {"row": 0, "col": 1},
+    "responsibleTeacherLabel": {"row": 0, "col": 5, "expectedText": "책임교사"},
+    "responsibleTeacher": {"row": 0, "col": 9},
+    "investigationDateLabel": {"row": 1, "col": 0, "expectedText": "사안조사 일자"},
+    "investigationDate": {"row": 1, "col": 1},
+    "investigatorLabel": {"row": 1, "col": 5, "expectedText": "조사관"},
+    "investigator": {"row": 1, "col": 9},
+    "violenceType": {"row": 2, "col": 1, "expectedText": "유형:"},
+    "studentHeader": {"row": 4, "col": 0, "expectedText": "관련 학생"},
+    "studentExampleRow1": {"row": 5, "col": 1},
+    "studentExampleRow2": {"row": 6, "col": 1},
+    "incidentSummary": {"row": 8, "col": 1},
+    "chronology": {"row": 9, "col": 1},
+    "separation": {"row": 10, "col": 1},
+    "separationExceptions": {"row": 11, "col": 6},
+    "selfResolutionHeader": {"row": 13, "col": 0, "expectedText": "자체해결 요건"},
+    "selfResolutionOpinion": {"row": 14, "col": 1, "expectedText": "학교장 자체해결 요건 의견"},
+    "selfResolutionConsent": {"row": 14, "col": 13},
+    "issue1": {"row": 15, "col": 1, "expectedText": "주요 쟁점 1"},
+    "issue1Victim": {"row": 16, "col": 2},
+    "issue1Perp": {"row": 17, "col": 2},
+    "issue1Witness": {"row": 18, "col": 2},
+    "issue2": {"row": 19, "col": 1, "expectedText": "주요 쟁점 2"},
+    "judgmentHeader": {"row": 21, "col": 0, "expectedText": "시행령 제19조"},
+    "severity": {"row": 22, "col": 1},
+    "persistence": {"row": 23, "col": 1},
+    "intentionality": {"row": 24, "col": 1},
+    "remorse": {"row": 25, "col": 1},
+    "reconciliation": {"row": 26, "col": 1},
+    "guidancePossibility": {"row": 29, "col": 1},
+    "victimDisability": {"row": 30, "col": 1},
+    "emergencyVictim": {"row": 31, "col": 2},
+    "emergencyPerp": {"row": 32, "col": 2},
+    "recurrenceHeader": {"row": 33, "col": 0, "expectedText": "재발 현황"},
+    "specialNotes": {"row": 37, "col": 1, "expectedText": "특이사항"}
+  },
+  "observed2026Differences": [
+    {
+      "key": "migrationBackgroundTerminology",
+      "reference2025": "특이사항 안내문에서 피해학생이 다문화학생인지 여부를 언급",
+      "guidance2026": "특이사항 안내문에서 피해학생이 이주배경학생인지 여부를 언급",
+      "status": "confirmed_difference"
+    }
+  ],
+  "productionRule": "2025 HWPX는 구조 실증용 기준이다. 2026 PDF의 항목과 용어를 비교하되, 2026 공식 HWPX 원본 확인 전에는 최종 출력서식으로 확정하지 않는다."
+}
