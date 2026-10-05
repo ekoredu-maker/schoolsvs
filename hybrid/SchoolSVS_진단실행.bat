@@ -8,20 +8,41 @@ echo   SchoolSVS Portable Diagnostic Launcher
 echo ==============================================
 echo.
 
-if exist "runtime\python.exe" (
-  echo [OK] Embedded Python: runtime\python.exe
-  "runtime\python.exe" app\main.py
-  goto :done
-)
-
-echo [WARN] Embedded Python not found. Trying installed Python for development...
-py -3 app\main.py 2>nul || python app\main.py
-if errorlevel 1 (
+echo [1] Folder: %CD%
+if not exist "runtime\python.exe" (
+  echo [ERROR] Embedded Python not found: runtime\python.exe
   echo.
-  echo [ERROR] Python runtime could not be found.
-  echo Use the official SchoolSVS portable ZIP containing the runtime folder.
   pause
+  exit /b 2
+)
+if not exist "app\portable_entry.py" (
+  echo [ERROR] portable_entry.py not found: app\portable_entry.py
+  echo.
+  pause
+  exit /b 3
 )
 
-:done
-endlocal
+echo [2] Embedded Python found.
+echo [3] Starting SchoolSVS portable entry...
+echo     This window will remain open while SchoolSVS is running.
+echo.
+
+"runtime\python.exe" app\portable_entry.py
+set EXITCODE=%ERRORLEVEL%
+
+echo.
+echo ==============================================
+echo SchoolSVS process ended. Exit code: %EXITCODE%
+echo ==============================================
+if exist "data\startup.log" (
+  echo.
+  echo ----- startup.log -----
+  type "data\startup.log"
+  echo ----- end log -----
+) else (
+  echo [INFO] startup.log was not created.
+)
+echo.
+echo Press any key to close this diagnostic window.
+pause >nul
+exit /b %EXITCODE%
