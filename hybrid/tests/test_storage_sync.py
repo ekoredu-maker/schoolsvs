@@ -77,6 +77,23 @@ class SafeStateSyncTests(unittest.TestCase):
         self.assertEqual(storage.list_cases(), [])
         self.assertTrue((storage.BACKUP_DIR / result["backup"]).exists())
 
+    def test_normal_settings_sync_preserves_hybrid_crash_snapshot(self):
+        snapshot = {"capturedAt":"2026-10-05T01:02:03+00:00","case":{"id":"draft-a","caseNo":"2026-0001"}}
+        storage.set_value("settings", {"school":"테스트초","_hybridCrashSnapshot":snapshot})
+        result = storage.sync_state([], 3, {"school":"변경초","teacher":"홍길동"}, mode="merge")
+        settings = storage.get_value("settings", {})
+        self.assertEqual(settings["school"], "변경초")
+        self.assertEqual(settings["teacher"], "홍길동")
+        self.assertEqual(settings["_hybridCrashSnapshot"], snapshot)
+        self.assertTrue(result["hybridSafetyPreserved"])
+
+    def test_new_hybrid_snapshot_replaces_old_snapshot(self):
+        old = {"capturedAt":"2026-10-05T01:00:00+00:00"}
+        new = {"capturedAt":"2026-10-05T01:05:00+00:00"}
+        storage.set_value("settings", {"school":"테스트초","_hybridCrashSnapshot":old})
+        storage.sync_state([], 3, {"school":"테스트초","_hybridCrashSnapshot":new}, mode="merge")
+        self.assertEqual(storage.get_value("settings", {})["_hybridCrashSnapshot"], new)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
