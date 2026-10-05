@@ -14,9 +14,12 @@
     body.schoolSimple #engineBadge.ok{background:#22a06b} body.schoolSimple #engineBadge.warn{background:#d97706}
     body.schoolSimple #syncText,body.schoolSimple #validateBtn,body.schoolSimple #panelBtn,
     body.schoolSimple .atozTopBtn,body.schoolSimple .studentTopBtn,body.schoolSimple .invTopBtn{display:none!important}
+    body.schoolSimple:not(.schoolAdvanced) .docItem [data-analyze],body.schoolSimple:not(.schoolAdvanced) .docItem [data-map]{display:none!important}
+    body.schoolSimple:not(.schoolAdvanced) #mappingOverlay{display:none!important}
     body.schoolSimple .hybridBtn{color:#294f72;border:1px solid #c8d4df;background:#fff;padding:7px 11px;border-radius:9px;font-weight:700}
     body.schoolSimple .hybridBtn:hover{background:#eef4f8}
     body.schoolSimple #documentBtn{background:#173a5c;color:#fff;border-color:#173a5c}
+    body.schoolSimple #documentPanel{width:min(700px,calc(100vw - 28px));max-height:84vh}
     body.schoolSimple #workflowDock{padding:7px 12px;background:#fff;border-bottom:1px solid #d8e1ea;box-shadow:none}
     body.schoolSimple #workflowDock.collapsed .dockTop{margin:0}
     body.schoolSimple .dockTitle{font-size:12px;color:#52677b}
@@ -25,8 +28,8 @@
     body.schoolSimple #compactWorkflowSummary{font-size:12px;color:#52677b;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:58vw}
     body.schoolSimple #legacyFrame{background:#fff}
     .simpleMenuWrap{position:relative}
-    .simpleMenu{display:none;position:absolute;right:0;top:40px;min-width:210px;background:#fff;border:1px solid #d8e1ea;border-radius:12px;box-shadow:0 14px 34px rgba(15,23,42,.16);padding:6px;z-index:240}
-    .simpleMenu.open{display:block}.simpleMenu button{display:block;width:100%;text-align:left;border:0;background:#fff;color:#334155;border-radius:8px;padding:9px 10px;cursor:pointer;font:inherit;font-size:12px}.simpleMenu button:hover{background:#f1f5f9}.simpleMenu .sep{height:1px;background:#e5ebf0;margin:5px 0}.simpleMenu .muted{font-size:10px;color:#8291a0;padding:5px 10px 3px}
+    .simpleMenu{display:none;position:absolute;right:0;top:40px;min-width:220px;background:#fff;border:1px solid #d8e1ea;border-radius:12px;box-shadow:0 14px 34px rgba(15,23,42,.16);padding:6px;z-index:240}
+    .simpleMenu.open{display:block}.simpleMenu button{display:block;width:100%;text-align:left;border:0;background:#fff;color:#334155;border-radius:8px;padding:9px 10px;cursor:pointer;font:inherit;font-size:12px}.simpleMenu button:hover{background:#f1f5f9}.simpleMenu .muted{font-size:10px;color:#8291a0;padding:5px 10px 3px}
     .savePill{display:inline-flex;align-items:center;gap:6px;font-size:11px;color:#52677b;padding:5px 8px;border-radius:999px;background:#eef3f7;white-space:nowrap}.savePill::before{content:'';width:7px;height:7px;border-radius:50%;background:#94a3b8}.savePill.ok::before{background:#22a06b}.savePill.busy::before{background:#d97706}.savePill.error::before{background:#c53f3f}
     @media(max-width:760px){body.schoolSimple #compactWorkflowSummary{max-width:40vw}.savePill{display:none}.simpleMenu{right:-35px}}
   `;
@@ -70,7 +73,7 @@
     const wrap=document.createElement('div'); wrap.className='simpleMenuWrap';
     const trigger=document.createElement('button'); trigger.className='hybridBtn'; trigger.type='button'; trigger.textContent=label;
     const menu=document.createElement('div'); menu.className='simpleMenu';
-    items(menu);
+    items(menu,trigger);
     trigger.addEventListener('click',(e)=>{e.stopPropagation(); document.querySelectorAll('.simpleMenu.open').forEach(x=>{if(x!==menu)x.classList.remove('open')}); menu.classList.toggle('open');});
     wrap.append(trigger,menu); bar.appendChild(wrap); return {wrap,menu};
   }
@@ -87,7 +90,8 @@
     menu.append(
       menuButton('업무흐름 전체 펼치기',()=>document.getElementById('dockToggle')?.click()),
       menuButton('상세 점검',()=>document.getElementById('validateBtn')?.click()),
-      menuButton('엔진 · 데이터 상태',()=>document.getElementById('panelBtn')?.click())
+      menuButton('엔진 · 데이터 상태',()=>document.getElementById('panelBtn')?.click()),
+      menuButton('문서 고급도구 표시/숨기기',()=>document.body.classList.toggle('schoolAdvanced'))
     );
   });
   document.addEventListener('click',()=>document.querySelectorAll('.simpleMenu.open').forEach(x=>x.classList.remove('open')));
