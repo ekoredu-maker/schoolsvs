@@ -19,8 +19,10 @@ class DocumentReadinessTests(unittest.TestCase):
         self.root = Path(self.tmp.name)
         self.templates = self.root / "templates"
         self.built = self.templates / "_built"
-        self.templates.mkdir()
-        self.built.mkdir()
+        self.analysis = self.templates / "_analysis"
+        self.reports = self.templates / "_build_reports"
+        for path in (self.templates, self.built, self.analysis, self.reports):
+            path.mkdir(exist_ok=True)
         self.registry = self.root / "document_registry.json"
         self.registry.write_text(json.dumps({
             "version": "test",
@@ -36,14 +38,20 @@ class DocumentReadinessTests(unittest.TestCase):
         self.old_registry = hwpx_engine.REGISTRY_PATH
         self.old_template_dir = document_readiness.TEMPLATE_DIR
         self.old_built_dir = document_readiness.BUILT_DIR
+        self.old_analysis_dir = document_readiness.ANALYSIS_DIR
+        self.old_report_dir = document_readiness.BUILD_REPORT_DIR
         hwpx_engine.REGISTRY_PATH = self.registry
         document_readiness.TEMPLATE_DIR = self.templates
         document_readiness.BUILT_DIR = self.built
+        document_readiness.ANALYSIS_DIR = self.analysis
+        document_readiness.BUILD_REPORT_DIR = self.reports
 
     def tearDown(self):
         hwpx_engine.REGISTRY_PATH = self.old_registry
         document_readiness.TEMPLATE_DIR = self.old_template_dir
         document_readiness.BUILT_DIR = self.old_built_dir
+        document_readiness.ANALYSIS_DIR = self.old_analysis_dir
+        document_readiness.BUILD_REPORT_DIR = self.old_report_dir
         self.tmp.cleanup()
 
     def complete_case(self):
@@ -70,22 +78,34 @@ class DocumentReadinessTests(unittest.TestCase):
             }
         }
 
-    def prepare_templates(self):
+    def prepare_templates(self, *, official=True):
         (self.templates / "form10.hwpx").write_bytes(b"official")
         (self.built / "form10.hwpx").write_bytes(b"built")
+        structure = {"official2026HwpxVerified": bool(official)} if official else {"sourceYearDetected": 2025, "reference2025Match": True}
+        (self.analysis / "form10_case_report_structure.json").write_text(json.dumps(structure), encoding="utf-8")
 
-    def test_complete_content_source_and_built_template_is_ready(self):
-        self.prepare_templates()
+    def test_complete_content_and_official_template_is_ready(self):
+        self.prepare_templates(official=True)
         result = document_readiness.form10_readiness(self.complete_case())
         self.assertTrue(result["contentReady"], result)
         self.assertTrue(result["templateReady"], result)
         self.assertTrue(result["builtTemplateReady"], result)
         self.assertTrue(result["mappingReady"], result)
+        self.assertTrue(result["officialVerified"], result)
         self.assertTrue(result["ready"], result)
         self.assertEqual(result["score"], 100)
 
+    def test_adaptive_2025_pdf_template_is_experimental_and_blocks_production(self):
+        self.prepare_templates(official=False)
+        result = document_readiness.form10_readiness(self.complete_case())
+        self.assertTrue(result["contentReady"], result)
+        self.assertTrue(result["experimentalOnly"], result)
+        self.assertFalse(result["ready"], result)
+        self.assertTrue(any("공식 2026 HWPX" in x for x in result["blocking"]))
+
     def test_source_without_built_template_blocks_generation(self):
         (self.templates / "form10.hwpx").write_bytes(b"official")
+        (self.analysis / "form10_case_report_structure.json").write_text(json.dumps({"official2026HwpxVerified": True}), encoding="utf-8")
         result = document_readiness.form10_readiness(self.complete_case())
         self.assertTrue(result["templateReady"])
         self.assertFalse(result["builtTemplateReady"])
