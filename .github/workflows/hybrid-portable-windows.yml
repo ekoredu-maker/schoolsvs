@@ -7,7 +7,6 @@ on:
       - hybrid-v0.1
     paths:
       - 'index.html'
-      - 'SchoolSVS_실행.bat'
       - 'hybrid/**'
       - '.github/workflows/hybrid-portable-windows.yml'
 
@@ -22,31 +21,27 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          .\hybrid\build_portable.ps1 -PythonVersion '3.11.9' -PackageVersion '0.20.2'
+          .\hybrid\build_portable.ps1 -PythonVersion '3.11.9' -PackageVersion '0.20.3'
 
-      - name: Verify embedded Python imports real app
+      - name: Verify embedded Python startup path
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
           $root = Join-Path $PWD 'dist\SchoolSVS_Portable'
           $python = Join-Path $root 'hybrid\runtime\python.exe'
           $pth = Join-Path $root 'hybrid\runtime\python311._pth'
-          $launcher = Join-Path $root 'SchoolSVS.vbs'
-          $diag = Join-Path $root 'SchoolSVS_Diagnostic.bat'
           $entry = Join-Path $root 'hybrid\app\portable_entry.py'
-          if (!(Test-Path $python)) { throw 'Embedded python.exe missing.' }
-          if (!(Test-Path $pth)) { throw 'python311._pth missing.' }
-          if (!(Test-Path $launcher)) { throw 'Root SchoolSVS.vbs launcher missing.' }
-          if (!(Test-Path $diag)) { throw 'Root diagnostic launcher missing.' }
-          if (!(Test-Path $entry)) { throw 'portable_entry.py missing.' }
-
+          $diag = Join-Path $root 'hybrid\diagnostic.bat'
+          $stop = Join-Path $root 'hybrid\stop.vbs'
+          foreach ($item in @($python,$pth,$entry,$diag,$stop)) {
+            if (!(Test-Path $item)) { throw "Missing portable startup file: $item" }
+          }
           $pthText = Get-Content $pth -Raw
           if ($pthText -notmatch '\.\.\\app') { throw 'Embedded Python app path is missing from python311._pth.' }
-
           & $python -c "import main, portable_entry; assert main.APP_ID == 'schoolsvs-hybrid'; s=portable_entry.create_portable_server(); assert s.server_address[1] > 0; s.server_close(); print('SchoolSVS portable startup path OK')"
           if ($LASTEXITCODE -ne 0) { throw 'Embedded Python could not initialize the portable application.' }
 
-      - name: Verify distribution contents
+      - name: Verify ASCII-only launcher paths
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
@@ -54,9 +49,11 @@ jobs:
           $required = @(
             (Join-Path $root 'SchoolSVS.vbs'),
             (Join-Path $root 'SchoolSVS_Diagnostic.bat'),
+            (Join-Path $root 'SchoolSVS_Stop.vbs'),
             (Join-Path $root 'index.html'),
             (Join-Path $root 'hybrid\SchoolSVS.vbs'),
-            (Join-Path $root 'hybrid\SchoolSVS_진단실행.bat'),
+            (Join-Path $root 'hybrid\diagnostic.bat'),
+            (Join-Path $root 'hybrid\stop.vbs'),
             (Join-Path $root 'hybrid\run_schoolsvs.bat'),
             (Join-Path $root 'hybrid\PORTABLE_README.txt'),
             (Join-Path $root 'hybrid\runtime\python.exe'),
@@ -67,12 +64,14 @@ jobs:
           foreach ($item in $required) {
             if (!(Test-Path $item)) { throw "Missing portable file: $item" }
           }
+          $rootDiag = Get-Content (Join-Path $root 'SchoolSVS_Diagnostic.bat') -Raw
+          if ($rootDiag -notmatch 'diagnostic\.bat') { throw 'Root diagnostic launcher is not using ASCII diagnostic.bat.' }
           if (Test-Path (Join-Path $root 'hybrid\tests')) { throw 'Tests directory leaked into distribution.' }
 
       - name: Upload ready-to-use portable folder
         uses: actions/upload-artifact@v4
         with:
-          name: SchoolSVS_Portable_Windows_RC4
+          name: SchoolSVS_Portable_Windows_RC5
           path: dist/SchoolSVS_Portable/
           if-no-files-found: error
           retention-days: 14
