@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+import json
 from typing import Any
 
-from hwpx_engine import BUILT_DIR, TEMPLATE_DIR, load_registry
+from hwpx_engine import ANALYSIS_DIR, BUILD_REPORT_DIR, BUILT_DIR, TEMPLATE_DIR, load_registry
 from investigation_data import readiness as investigation_readiness
 from student_profiles import profile_readiness
 from workflow import atoz_form10_readiness
@@ -99,6 +100,36 @@ def _student_section(case: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _read_json(path) -> dict[str, Any] | None:
+    try:
+        return json.loads(path.read_text(encoding="utf-8")) if path.exists() else None
+    except Exception:
+        return None
+
+
+def _fidelity_state(document_key: str) -> dict[str, Any]:
+    if document_key != "form10_case_report":
+        return {"officialVerified": None, "experimentalOnly": False, "fidelityNote": None}
+    structure = _read_json(ANALYSIS_DIR / f"{document_key}_structure.json") or {}
+    build = _read_json(BUILD_REPORT_DIR / f"{document_key}.json") or {}
+    official = bool(
+        structure.get("official2026HwpxVerified")
+        or build.get("official2026HwpxVerified")
+        or build.get("adaptiveOfficial2026Verified")
+    )
+    adaptive = bool(
+        build.get("sourceKind") == "2026_pdf_adaptive"
+        or structure.get("sourceYearDetected") == 2025
+        or structure.get("reference2025Match") is True
+    )
+    note = None if official else (
+        "현재 서식10은 2025 HWPX 구조 및 2026 PDF를 이용한 시험 구조입니다. 공식 2026 HWPX 원본과 1:1 검증 전에는 학교 제출용 정식 HWPX를 생성하지 않습니다."
+        if adaptive else
+        "공식 2026 서식10 HWPX 원본 여부가 확인되지 않아 학교 제출용 정식 생성을 잠갔습니다."
+    )
+    return {"officialVerified": official, "experimentalOnly": not official, "fidelityNote": note}
+
+
 def _template_state(document_key: str) -> dict[str, Any]:
     registry = load_registry()
     doc = (registry.get("documents") or {}).get(document_key) or {}
@@ -110,6 +141,7 @@ def _template_state(document_key: str) -> dict[str, Any]:
         "builtTemplateReady": bool(built_path and built_path.exists()),
         "mappingReady": bool(doc.get("fields")),
         "template": template_name,
+        **_fidelity_state(document_key),
     }
 
 
@@ -127,9 +159,15 @@ def _assemble(document_key: str, label: str, sections: list[dict[str, Any]]) -> 
         blocking.append(f"{label} 생성용 템플릿 미제작")
     if not template["mappingReady"]:
         blocking.append(f"{label} 필드 매핑 미등록")
+    if template.get("experimentalOnly"):
+        blocking.append(str(template.get("fidelityNote") or "공식 HWPX 구조 검증이 완료되지 않았습니다."))
+    production_ready = (
+        content_ready and template["templateReady"] and template["builtTemplateReady"]
+        and template["mappingReady"] and not template.get("experimentalOnly")
+    )
     return {
         "documentKey": document_key, "label": label, "contentReady": content_ready,
-        "ready": content_ready and template["templateReady"] and template["builtTemplateReady"] and template["mappingReady"],
+        "ready": production_ready,
         "score": score, "sections": sections, "blocking": blocking, **template,
     }
 
@@ -162,7 +200,7 @@ def document_readiness(document_key: str, case: dict[str, Any], settings: dict[s
     if document_key == "form12_investigation_report":
         return form12_readiness(case, settings=settings)
     template = _template_state(document_key)
-    ready = template["templateReady"] and template["builtTemplateReady"] and template["mappingReady"]
+    ready = template["templateReady"] and template["builtTemplateReady"] and template["mappingReady"] and not template.get("experimentalOnly")
     return {
         "documentKey": document_key, "contentReady": True, "ready": ready, "score": 100,
         "sections": [], "blocking": [] if ready else ["공식 원본·생성용 템플릿·필드 매핑을 확인하세요."], **template,
