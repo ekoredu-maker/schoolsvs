@@ -21,7 +21,7 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          .\hybrid\build_portable.ps1 -PythonVersion '3.11.9' -PackageVersion '0.20.4'
+          .\hybrid\build_portable.ps1 -PythonVersion '3.11.9' -PackageVersion '0.20.5'
 
       - name: Verify embedded Python startup and localhost health
         shell: pwsh
@@ -40,6 +40,20 @@ jobs:
           if ($pthText -notmatch '\.\.\\app') { throw 'Embedded Python app path is missing from python311._pth.' }
           & $python -c "import main,portable_entry,threading; assert main.APP_ID=='schoolsvs-hybrid'; s=portable_entry.create_portable_server(); t=threading.Thread(target=s.serve_forever,daemon=True); t.start(); p=s.server_address[1]; assert portable_entry._wait_for_health(p,3.0); s.shutdown(); t.join(2); s.server_close(); print('SchoolSVS localhost health startup OK')"
           if ($LASTEXITCODE -ne 0) { throw 'Embedded Python could not pass localhost health startup test.' }
+
+      - name: Verify front-end hang guard
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $simple = Get-Content '.\hybrid\web\simple-ui.js' -Raw
+          if ($simple -match 'observe\(dock,\{[^\}]*attributes\s*:\s*true') {
+            throw 'simple-ui.js reintroduced an attribute-observer feedback loop.'
+          }
+          if ($simple -notmatch 'requestAnimationFrame\(updateCompact\)') {
+            throw 'simple-ui.js compact updates are not throttled.'
+          }
+          node --check '.\hybrid\web\simple-ui.js'
+          if ($LASTEXITCODE -ne 0) { throw 'simple-ui.js syntax check failed.' }
 
       - name: Verify ASCII-only launcher paths
         shell: pwsh
@@ -71,7 +85,7 @@ jobs:
       - name: Upload ready-to-use portable folder
         uses: actions/upload-artifact@v4
         with:
-          name: SchoolSVS_Portable_Windows_RC6
+          name: SchoolSVS_Portable_Windows_RC7
           path: dist/SchoolSVS_Portable/
           if-no-files-found: error
           retention-days: 14
