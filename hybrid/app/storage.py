@@ -135,6 +135,18 @@ def backup_state(reason: str = "manual") -> Path:
     return path
 
 
+def _merge_settings_preserving_hybrid(incoming: Any) -> dict[str, Any]:
+    """일반 UI 설정 저장이 crash snapshot 같은 하이브리드 안전정보를 지우지 않게 한다."""
+    current = get_value("settings", {})
+    current = current if isinstance(current, dict) else {}
+    incoming_dict = incoming if isinstance(incoming, dict) else {}
+    preserved = {
+        key: value for key, value in current.items()
+        if str(key).startswith("_hybrid") and key not in incoming_dict
+    }
+    return {**preserved, **incoming_dict}
+
+
 def sync_state(
     cases: list[dict[str, Any]],
     counter: Any = 1,
@@ -147,6 +159,7 @@ def sync_state(
 
     merge: 입력된 사안만 추가/갱신하고 SQLite의 다른 사안은 삭제하지 않는다.
     reconcile: 입력 목록에 없는 사안을 삭제한다. 삭제 전 자동 백업하며, 빈 목록으로의 전체삭제는 명시 허용 없이는 차단한다.
+    `_hybrid...` 설정키는 자동저장/복구용 내부 안전정보이므로 일반 설정 동기화가 누락시켜도 보존한다.
     """
     if not isinstance(cases, list):
         raise ValueError("cases는 목록이어야 합니다.")
@@ -167,13 +180,14 @@ def sync_state(
     if removed_ids:
         backup = backup_state("state_reconcile_before_delete")
 
+    merged_settings = _merge_settings_preserving_hybrid(settings)
     with connect() as conn:
         for case in normalized:
             _upsert_case_conn(conn, case)
         if mode == "reconcile" and removed_ids:
             conn.executemany("DELETE FROM cases WHERE id=?", [(case_id,) for case_id in removed_ids])
         _set_value_conn(conn, "counter", counter if counter is not None else 1)
-        _set_value_conn(conn, "settings", settings if isinstance(settings, dict) else {})
+        _set_value_conn(conn, "settings", merged_settings)
 
     return {
         "mode": mode,
@@ -181,4 +195,5 @@ def sync_state(
         "removed": len(removed_ids),
         "removedIds": removed_ids,
         "backup": backup.name if backup else None,
+        "hybridSafetyPreserved": any(str(k).startswith("_hybrid") for k in merged_settings),
     }
