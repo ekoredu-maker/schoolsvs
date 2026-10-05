@@ -30,9 +30,11 @@
     const gen=card.querySelector(`[data-generate="${FORM10}"]`);
     if(policy?.officialVerified){
       gate.className='fidelityGate ok';gate.innerHTML='<b>공식 2026 HWPX 검증 완료</b><br>등록한 공식 원본의 구조를 기준으로 출력합니다.';
-      card.dataset.fidelityLocked='0';if(gen&&gen.textContent.includes('잠금'))gen.textContent='현재 사안으로 생성';return;
+      card.dataset.fidelityLocked='0';card.dataset.experimentalAllowed='0';
+      if(gen&&gen.textContent.includes('잠금'))gen.textContent='현재 사안으로 생성';return;
     }
     card.dataset.fidelityLocked='1';
+    card.dataset.experimentalAllowed=experimentalUnlocked?'1':'0';
     gate.className='fidelityGate locked';
     const basis=policy?.adaptive?'현재 등록본은 2025 HWPX 구조 또는 2026 PDF 기반 적응형입니다.':'공식 2026 HWPX 여부가 아직 확인되지 않았습니다.';
     gate.innerHTML=`<b>정식 HWPX 생성 잠금</b><br>${basis}<br>학교 제출용은 공식 2026 HWPX 원본을 등록해 구조를 확정한 뒤 사용하세요.<br><button type="button" data-experimental>${experimentalUnlocked?'시험본 생성 잠그기':'시험본 생성만 임시 허용'}</button>`;
