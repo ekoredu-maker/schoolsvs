@@ -18,62 +18,31 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Prepare portable folder
+      - name: Build portable package
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          .\hybrid\build_portable.ps1 -PythonVersion '3.11.9' -PackageVersion '0.20.1'
+
+      - name: Verify embedded Python imports real app
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
           $root = Join-Path $PWD 'dist\SchoolSVS_Portable'
-          New-Item -ItemType Directory -Force -Path $root | Out-Null
-          Copy-Item 'index.html' $root
-          Copy-Item 'SchoolSVS_실행.bat' $root
-          Copy-Item 'hybrid' (Join-Path $root 'hybrid') -Recurse
+          $python = Join-Path $root 'hybrid\runtime\python.exe'
+          $pth = Join-Path $root 'hybrid\runtime\python311._pth'
+          $launcher = Join-Path $root 'SchoolSVS.vbs'
+          $entry = Join-Path $root 'hybrid\app\portable_entry.py'
+          if (!(Test-Path $python)) { throw 'Embedded python.exe missing.' }
+          if (!(Test-Path $pth)) { throw 'python311._pth missing.' }
+          if (!(Test-Path $launcher)) { throw 'Root SchoolSVS.vbs launcher missing.' }
+          if (!(Test-Path $entry)) { throw 'portable_entry.py missing.' }
 
-          # 개발 중 생성될 수 있는 실제 데이터/출력은 배포본에 포함하지 않는다.
-          $cleanTargets = @(
-            (Join-Path $root 'hybrid\data\schoolsvs.db'),
-            (Join-Path $root 'hybrid\data\schoolsvs.db-wal'),
-            (Join-Path $root 'hybrid\data\schoolsvs.db-shm'),
-            (Join-Path $root 'hybrid\data\backups'),
-            (Join-Path $root 'hybrid\output')
-          )
-          foreach ($target in $cleanTargets) {
-            if (Test-Path $target) { Remove-Item $target -Recurse -Force }
-          }
+          $pthText = Get-Content $pth -Raw
+          if ($pthText -notmatch '\.\.\\app') { throw 'Embedded Python app path is missing from python311._pth.' }
 
-      - name: Add embedded Python
-        shell: pwsh
-        run: |
-          $ErrorActionPreference = 'Stop'
-          $runtime = Join-Path $PWD 'dist\SchoolSVS_Portable\hybrid\runtime'
-          New-Item -ItemType Directory -Force -Path $runtime | Out-Null
-          $zip = Join-Path $env:RUNNER_TEMP 'python-embed.zip'
-          Invoke-WebRequest `
-            -Uri 'https://www.python.org/ftp/python/3.11.9/python-3.11.9-embed-amd64.zip' `
-            -OutFile $zip
-          Expand-Archive -Path $zip -DestinationPath $runtime -Force
-          if (!(Test-Path (Join-Path $runtime 'python.exe'))) {
-            throw 'Embedded python.exe was not created.'
-          }
-
-      - name: Portable smoke test
-        shell: pwsh
-        run: |
-          $ErrorActionPreference = 'Stop'
-          $python = Join-Path $PWD 'dist\SchoolSVS_Portable\hybrid\runtime\python.exe'
-          & $python -m compileall -q 'dist\SchoolSVS_Portable\hybrid\app'
-          if ($LASTEXITCODE -ne 0) { throw 'Portable Python compile test failed.' }
-          & $python 'dist\SchoolSVS_Portable\hybrid\tests\test_server_runtime.py'
-          if ($LASTEXITCODE -ne 0) { throw 'Dynamic-port smoke test failed.' }
-
-      - name: Remove development-only files
-        shell: pwsh
-        run: |
-          $ErrorActionPreference = 'Stop'
-          $root = Join-Path $PWD 'dist\SchoolSVS_Portable'
-          $tests = Join-Path $root 'hybrid\tests'
-          if (Test-Path $tests) { Remove-Item $tests -Recurse -Force }
-          Get-ChildItem $root -Recurse -Directory -Filter '__pycache__' | Remove-Item -Recurse -Force
-          Get-ChildItem $root -Recurse -File -Filter '*.pyc' | Remove-Item -Force
+          & $python -c "import main, portable_entry; assert main.APP_ID == 'schoolsvs-hybrid'; print('SchoolSVS portable import OK')"
+          if ($LASTEXITCODE -ne 0) { throw 'Embedded Python could not import the real application.' }
 
       - name: Verify distribution contents
         shell: pwsh
@@ -81,31 +50,26 @@ jobs:
           $ErrorActionPreference = 'Stop'
           $root = Join-Path $PWD 'dist\SchoolSVS_Portable'
           $required = @(
-            (Join-Path $root 'SchoolSVS_실행.bat'),
+            (Join-Path $root 'SchoolSVS.vbs'),
+            (Join-Path $root 'SchoolSVS_Diagnostic.bat'),
             (Join-Path $root 'index.html'),
+            (Join-Path $root 'hybrid\SchoolSVS.vbs'),
             (Join-Path $root 'hybrid\run_schoolsvs.bat'),
             (Join-Path $root 'hybrid\PORTABLE_README.txt'),
             (Join-Path $root 'hybrid\runtime\python.exe'),
-            (Join-Path $root 'hybrid\app\main.py')
+            (Join-Path $root 'hybrid\runtime\pythonw.exe'),
+            (Join-Path $root 'hybrid\app\main.py'),
+            (Join-Path $root 'hybrid\app\portable_entry.py')
           )
           foreach ($item in $required) {
             if (!(Test-Path $item)) { throw "Missing portable file: $item" }
           }
           if (Test-Path (Join-Path $root 'hybrid\tests')) { throw 'Tests directory leaked into distribution.' }
 
-      - name: Create portable ZIP
-        shell: pwsh
-        run: |
-          $ErrorActionPreference = 'Stop'
-          Compress-Archive `
-            -Path 'dist\SchoolSVS_Portable\*' `
-            -DestinationPath 'dist\SchoolSVS_Portable_Windows.zip' `
-            -Force
-
-      - name: Upload portable artifact
+      - name: Upload ready-to-use portable folder
         uses: actions/upload-artifact@v4
         with:
-          name: SchoolSVS_Portable_Windows
-          path: dist/SchoolSVS_Portable_Windows.zip
+          name: SchoolSVS_Portable_Windows_RC3
+          path: dist/SchoolSVS_Portable/
           if-no-files-found: error
           retention-days: 14
