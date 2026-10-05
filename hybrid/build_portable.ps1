@@ -1,6 +1,6 @@
 param(
   [string]$PythonVersion = "3.11.9",
-  [string]$PackageVersion = "0.20.2"
+  [string]$PackageVersion = "0.20.3"
 )
 
 $ErrorActionPreference = "Stop"
@@ -32,16 +32,10 @@ try {
     New-Item -ItemType Directory -Path (Join-Path $HybridOut "templates") | Out-Null
   }
 
-  $baseFiles = @("SchoolSVS.vbs", "run_schoolsvs.bat", "PORTABLE_README.txt")
+  $baseFiles = @("SchoolSVS.vbs", "run_schoolsvs.bat", "diagnostic.bat", "stop.vbs", "PORTABLE_README.txt")
   foreach ($name in $baseFiles) {
     $source = Join-Path $HybridDir $name
     if (Test-Path $source) { Copy-Item $source (Join-Path $HybridOut $name) -Force }
-  }
-  Get-ChildItem $HybridDir -Filter "SchoolSVS*.vbs" -File | ForEach-Object {
-    Copy-Item $_.FullName (Join-Path $HybridOut $_.Name) -Force
-  }
-  Get-ChildItem $HybridDir -Filter "SchoolSVS*.bat" -File | ForEach-Object {
-    Copy-Item $_.FullName (Join-Path $HybridOut $_.Name) -Force
   }
 
   foreach ($folder in @("data", "output", "mappings")) {
@@ -70,7 +64,6 @@ try {
   ) | Set-Content -Path $pthPath -Encoding ASCII
 
   Write-Host "[5/7] Creating root launchers..."
-  $rootVbs = Join-Path $PackageRoot "SchoolSVS.vbs"
   @'
 Option Explicit
 Dim shell, fso, baseDir, launcher
@@ -83,41 +76,36 @@ If Not fso.FileExists(launcher) Then
   WScript.Quit 2
 End If
 shell.Run "wscript.exe " & Chr(34) & launcher & Chr(34), 0, False
-'@ | Set-Content -Path $rootVbs -Encoding Default
+'@ | Set-Content -Path (Join-Path $PackageRoot "SchoolSVS.vbs") -Encoding ASCII
 
-  $rootStop = Join-Path $PackageRoot "SchoolSVS_Stop.vbs"
   @'
 Option Explicit
-Dim shell, fso, baseDir, matches, launcher
+Dim shell, fso, baseDir, launcher
 Set shell = CreateObject("WScript.Shell")
 Set fso = CreateObject("Scripting.FileSystemObject")
-baseDir = fso.BuildPath(fso.GetParentFolderName(WScript.ScriptFullName), "hybrid")
-launcher = ""
-For Each matches In fso.GetFolder(baseDir).Files
-  If LCase(Left(matches.Name, 9)) = "schoolsvs" And LCase(Right(matches.Name, 4)) = ".vbs" Then
-    If InStr(matches.Name, "SchoolSVS.vbs") = 0 Then
-      launcher = matches.Path
-    End If
-  End If
-Next
-If launcher <> "" Then shell.Run "wscript.exe " & Chr(34) & launcher & Chr(34), 0, True
-'@ | Set-Content -Path $rootStop -Encoding Default
+baseDir = fso.GetParentFolderName(WScript.ScriptFullName)
+launcher = fso.BuildPath(baseDir, "hybrid\stop.vbs")
+If Not fso.FileExists(launcher) Then
+  MsgBox "SchoolSVS stop helper is missing.", vbExclamation, "SchoolSVS"
+  WScript.Quit 2
+End If
+shell.Run "wscript.exe " & Chr(34) & launcher & Chr(34), 0, True
+'@ | Set-Content -Path (Join-Path $PackageRoot "SchoolSVS_Stop.vbs") -Encoding ASCII
 
-  $rootBat = Join-Path $PackageRoot "SchoolSVS_Diagnostic.bat"
   @'
 @echo off
 setlocal
 cd /d "%~dp0hybrid"
-if exist "SchoolSVS_진단실행.bat" (
-  call "SchoolSVS_진단실행.bat"
+if exist "diagnostic.bat" (
+  call "diagnostic.bat"
 ) else (
-  echo [ERROR] Diagnostic launcher is missing: hybrid\SchoolSVS_진단실행.bat
+  echo [ERROR] Diagnostic launcher is missing: hybrid\diagnostic.bat
   echo.
   pause
   exit /b 2
 )
 endlocal
-'@ | Set-Content -Path $rootBat -Encoding Default
+'@ | Set-Content -Path (Join-Path $PackageRoot "SchoolSVS_Diagnostic.bat") -Encoding ASCII
 
   Write-Host "[6/7] Cleaning development-only files..."
   Get-ChildItem $PackageRoot -Recurse -Directory -Filter "__pycache__" -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
@@ -126,10 +114,7 @@ endlocal
   Write-Host "[7/7] Creating portable ZIP..."
   if (Test-Path $ZipOut) { Remove-Item $ZipOut -Force }
   Compress-Archive -Path (Join-Path $PackageRoot "*") -DestinationPath $ZipOut -CompressionLevel Optimal
-
-  Write-Host ""
   Write-Host "Build complete: $ZipOut"
-  Write-Host "Run SchoolSVS.vbs. Python installation is not required."
 }
 finally {
   if (Test-Path $TempDir) { Remove-Item $TempDir -Recurse -Force -ErrorAction SilentlyContinue }
