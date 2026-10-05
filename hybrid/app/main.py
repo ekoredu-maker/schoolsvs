@@ -10,10 +10,13 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, quote, unquote, urlparse
 
+from chungbuk_form12 import prepare_form12_upload
 from document_readiness import document_readiness
 from form10_markers import apply_form10_markers_to_hwpx
 from form10_student_rows import apply_student_rows_to_hwpx
 from hwpx_engine import (
+    ANALYSIS_DIR,
+    SOURCE_BUNDLE_DIR,
     TEMPLATE_DIR,
     generate_document,
     get_structure_report,
@@ -23,16 +26,7 @@ from hwpx_engine import (
     register_template,
 )
 from mapping_service import build_mapping_workspace, save_mapping, source_catalog
-from storage import (
-    backup_state,
-    delete_case,
-    get_case,
-    get_value,
-    init_db,
-    list_cases,
-    sync_state,
-    upsert_case,
-)
+from storage import backup_state, delete_case, get_case, get_value, init_db, list_cases, sync_state, upsert_case
 from student_profiles import consent_readiness, profile_readiness
 from template_builder import build_template, load_build_report
 from workflow import calculate_deadlines, load_rules, validate_case, workflow_state
@@ -40,8 +34,9 @@ from workflow import calculate_deadlines, load_rules, validate_case, workflow_st
 ROOT = Path(__file__).resolve().parents[2]
 HOST = "127.0.0.1"
 REQUESTED_PORT = int(os.environ.get("SCHOOLSVS_PORT", "0") or "0")
-VERSION = "0.18.0"
+VERSION = "0.19.0"
 APP_ID = "schoolsvs-hybrid"
+STRICT_DOCUMENTS = {"form10_case_report", "form12_investigation_report"}
 
 FORM10_DIRECT_TOKENS = {
     "INVESTIGATION_MODE", "NO2_ACTION_DATE", "VIOLENCE_TYPE", "SEPARATION_PERIOD",
@@ -53,7 +48,7 @@ FORM10_DIRECT_TOKENS = {
 
 
 class Handler(BaseHTTPRequestHandler):
-    server_version = "SchoolSVS-Hybrid/0.18"
+    server_version = "SchoolSVS-Hybrid/0.19"
 
     def _json(self, payload, status=200):
         body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
@@ -93,13 +88,12 @@ class Handler(BaseHTTPRequestHandler):
 
         if path == "/api/health":
             rules = load_rules()
-            actual_port = int(self.server.server_address[1])
             return self._json({
                 "ok": True,
                 "appId": APP_ID,
                 "engine": "python",
                 "version": VERSION,
-                "port": actual_port,
+                "port": int(self.server.server_address[1]),
                 "rulesVersion": rules.get("version"),
                 "documentRegistryVersion": load_registry().get("version"),
             })
@@ -107,12 +101,7 @@ class Handler(BaseHTTPRequestHandler):
             return self._json({"ok": True, "rules": load_rules()})
         if path == "/api/documents":
             docs = list_documents()
-            return self._json({
-                "ok": True,
-                "documents": docs,
-                "templateDir": str(TEMPLATE_DIR),
-                "readyCount": sum(1 for d in docs if d.get("builtTemplateReady")),
-            })
+            return self._json({"ok": True, "documents": docs, "templateDir": str(TEMPLATE_DIR), "readyCount": sum(1 for d in docs if d.get("builtTemplateReady"))})
         if path == "/api/documents/sources":
             return self._json({"ok": True, "sources": source_catalog()})
         if path == "/api/documents/mapping":
@@ -132,8 +121,7 @@ class Handler(BaseHTTPRequestHandler):
             return self._json({"ok": bool(report), "report": report}, 200 if report else 404)
         if path == "/api/documents/inspect":
             key = (query.get("key") or [""])[0]
-            registry = load_registry()
-            doc = (registry.get("documents") or {}).get(key)
+            doc = (load_registry().get("documents") or {}).get(key)
             if not doc:
                 return self._json({"ok": False, "error": "등록되지 않은 문서입니다."}, 404)
             template = TEMPLATE_DIR / str(doc.get("template") or "")
@@ -151,23 +139,13 @@ class Handler(BaseHTTPRequestHandler):
             case = get_case(case_id)
             return self._json({"ok": bool(case), "case": case}, 200 if case else 404)
         if path == "/api/state":
-            return self._json({
-                "ok": True,
-                "cases": list_cases(),
-                "counter": get_value("counter", 1),
-                "settings": get_value("settings", {}),
-            })
+            return self._json({"ok": True, "cases": list_cases(), "counter": get_value("counter", 1), "settings": get_value("settings", {})})
         if path.startswith("/api/workflow/"):
             case_id = path.removeprefix("/api/workflow/")
             case = get_case(case_id)
             if not case:
                 return self._json({"ok": False, "error": "사안을 찾을 수 없습니다."}, 404)
-            return self._json({
-                "ok": True,
-                "workflow": workflow_state(case),
-                "studentProfiles": profile_readiness(case),
-                "consentProfiles": consent_readiness(case),
-            })
+            return self._json({"ok": True, "workflow": workflow_state(case), "studentProfiles": profile_readiness(case), "consentProfiles": consent_readiness(case)})
 
         if path in ("", "/"):
             relative = "hybrid/web/index.html"
@@ -191,29 +169,11 @@ class Handler(BaseHTTPRequestHandler):
                 if not result["ok"]:
                     return self._json({"ok": False, "validation": result, "workflow": workflow_state(data)}, 400)
                 upsert_case(data)
-                return self._json({
-                    "ok": True,
-                    "case": data,
-                    "validation": result,
-                    "workflow": workflow_state(data),
-                    "studentProfiles": profile_readiness(data),
-                    "consentProfiles": consent_readiness(data),
-                })
+                return self._json({"ok": True, "case": data, "validation": result, "workflow": workflow_state(data), "studentProfiles": profile_readiness(data), "consentProfiles": consent_readiness(data)})
             if path == "/api/validate":
-                return self._json({
-                    "ok": True,
-                    "validation": validate_case(data),
-                    "workflow": workflow_state(data),
-                    "deadlines": calculate_deadlines(data),
-                    "studentProfiles": profile_readiness(data),
-                    "consentProfiles": consent_readiness(data),
-                })
+                return self._json({"ok": True, "validation": validate_case(data), "workflow": workflow_state(data), "deadlines": calculate_deadlines(data), "studentProfiles": profile_readiness(data), "consentProfiles": consent_readiness(data)})
             if path == "/api/student-profiles/readiness":
-                return self._json({
-                    "ok": True,
-                    "form10": profile_readiness(data),
-                    "consent": consent_readiness(data),
-                })
+                return self._json({"ok": True, "form10": profile_readiness(data), "consent": consent_readiness(data)})
             if path == "/api/documents/readiness":
                 key = str(data.get("documentKey") or "").strip()
                 case = data.get("case")
@@ -231,7 +191,17 @@ class Handler(BaseHTTPRequestHandler):
                     file_bytes = base64.b64decode(encoded, validate=True)
                 except Exception:
                     return self._json({"ok": False, "error": "HWPX 파일 데이터가 올바르지 않습니다."}, 400)
+
+                form12_source_meta = None
+                if key == "form12_investigation_report":
+                    file_bytes, form12_source_meta = prepare_form12_upload(file_bytes, file_name, SOURCE_BUNDLE_DIR)
                 result = register_template(key, file_bytes, original_name=file_name)
+                if form12_source_meta:
+                    ANALYSIS_DIR.mkdir(parents=True, exist_ok=True)
+                    (ANALYSIS_DIR / f"{key}_structure.json").write_text(
+                        json.dumps(form12_source_meta.get("structure") or {}, ensure_ascii=False, indent=2), encoding="utf-8"
+                    )
+                    result["sourcePreparation"] = form12_source_meta
                 return self._json({"ok": True, **result})
             if path == "/api/documents/mapping":
                 key = str(data.get("documentKey") or "").strip()
@@ -244,8 +214,7 @@ class Handler(BaseHTTPRequestHandler):
                 key = str(data.get("documentKey") or "").strip()
                 if not key:
                     return self._json({"ok": False, "error": "서식키가 필요합니다."}, 400)
-                report = build_template(key)
-                return self._json({"ok": True, "report": report})
+                return self._json({"ok": True, "report": build_template(key)})
             if path == "/api/documents/generate":
                 key = str(data.get("documentKey") or "").strip()
                 case = data.get("case")
@@ -253,16 +222,10 @@ class Handler(BaseHTTPRequestHandler):
                     case = get_case(str(data.get("caseId")))
                 if not isinstance(case, dict):
                     return self._json({"ok": False, "error": "문서 생성에 사용할 사안 데이터가 없습니다."}, 400)
-                settings = data.get("settings")
-                if not isinstance(settings, dict):
-                    settings = get_value("settings", {})
+                settings = data.get("settings") if isinstance(data.get("settings"), dict) else get_value("settings", {})
                 readiness = document_readiness(key, case, settings=settings)
-                if key == "form10_case_report" and not readiness.get("ready"):
-                    return self._json({
-                        "ok": False,
-                        "error": "서식10 생성 전 필수 점검을 완료하세요.",
-                        "readiness": readiness,
-                    }, 409)
+                if key in STRICT_DOCUMENTS and not readiness.get("ready"):
+                    return self._json({"ok": False, "error": f"{readiness.get('label') or key} 생성 전 필수 점검을 완료하세요.", "readiness": readiness}, 409)
                 result = generate_document(key, case, settings=settings, output_name=data.get("outputName"))
                 student_rows = None
                 form10_markers = None
@@ -273,25 +236,13 @@ class Handler(BaseHTTPRequestHandler):
                     missing_tokens = [token for token in missing_tokens if token not in FORM10_DIRECT_TOKENS]
                 relative = result.output_path.relative_to(ROOT).as_posix()
                 return self._json({
-                    "ok": True,
-                    "documentKey": result.document_key,
-                    "fileName": result.output_path.name,
-                    "downloadUrl": "/" + relative,
-                    "replacedTokens": result.replaced_tokens,
-                    "missingTokens": missing_tokens,
-                    "studentRows": student_rows,
-                    "form10Markers": form10_markers,
-                    "readiness": readiness,
-                    "warning": "템플릿 구조 검증 전 시험 생성본입니다." if missing_tokens else None,
+                    "ok": True, "documentKey": result.document_key, "fileName": result.output_path.name,
+                    "downloadUrl": "/" + relative, "replacedTokens": result.replaced_tokens,
+                    "missingTokens": missing_tokens, "studentRows": student_rows, "form10Markers": form10_markers,
+                    "readiness": readiness, "warning": "템플릿 구조 검증 전 시험 생성본입니다." if missing_tokens else None,
                 })
             if path == "/api/state":
-                result = sync_state(
-                    data.get("cases") or [],
-                    data.get("counter", 1),
-                    data.get("settings") or {},
-                    mode=str(data.get("mode") or "merge"),
-                    allow_empty_reconcile=bool(data.get("allowEmptyReconcile")),
-                )
+                result = sync_state(data.get("cases") or [], data.get("counter", 1), data.get("settings") or {}, mode=str(data.get("mode") or "merge"), allow_empty_reconcile=bool(data.get("allowEmptyReconcile")))
                 return self._json({"ok": True, **result})
             self._json({"ok": False, "error": "지원하지 않는 API입니다."}, 404)
         except FileNotFoundError as e:
