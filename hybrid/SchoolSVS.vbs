@@ -1,15 +1,15 @@
 ' SchoolSVS 포터블 숨김 실행기
 Option Explicit
 
-Dim shell, fso, baseDir, pythonw, entryPy, cmd
+Dim shell, fso, baseDir, pythonExe, entryPy, cmd
 Set shell = CreateObject("WScript.Shell")
 Set fso = CreateObject("Scripting.FileSystemObject")
 baseDir = fso.GetParentFolderName(WScript.ScriptFullName)
 
-pythonw = fso.BuildPath(baseDir, "runtime\pythonw.exe")
+pythonExe = fso.BuildPath(baseDir, "runtime\python.exe")
 entryPy = fso.BuildPath(baseDir, "app\portable_entry.py")
 
-If Not fso.FileExists(pythonw) Then
+If Not fso.FileExists(pythonExe) Then
   MsgBox "SchoolSVS 포터블 Python 실행기를 찾을 수 없습니다." & vbCrLf & _
          "runtime 폴더가 포함된 정식 배포 ZIP인지 확인하세요.", vbCritical, "SchoolSVS"
   WScript.Quit 2
@@ -21,5 +21,6 @@ If Not fso.FileExists(entryPy) Then
 End If
 
 shell.Environment("Process")("SCHOOLSVS_PORT") = ""
-cmd = Chr(34) & pythonw & Chr(34) & " " & Chr(34) & entryPy & Chr(34)
+cmd = Chr(34) & pythonExe & Chr(34) & " " & Chr(34) & entryPy & Chr(34)
+' 창은 숨기되 Python 자체의 오류처리(MessageBox/startup.log)는 유지한다.
 shell.Run cmd, 0, False
