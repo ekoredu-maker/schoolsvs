@@ -1,6 +1,6 @@
 param(
   [string]$PythonVersion = "3.11.9",
-  [string]$PackageVersion = "0.20.3"
+  [string]$PackageVersion = "0.20.6"
 )
 
 $ErrorActionPreference = "Stop"
@@ -30,6 +30,9 @@ try {
     Copy-Item (Join-Path $HybridDir "templates") (Join-Path $HybridOut "templates") -Recurse -Force
   } else {
     New-Item -ItemType Directory -Path (Join-Path $HybridOut "templates") | Out-Null
+  }
+  if (Test-Path (Join-Path $HybridDir "sample-data")) {
+    Copy-Item (Join-Path $HybridDir "sample-data") (Join-Path $HybridOut "sample-data") -Recurse -Force
   }
 
   $baseFiles = @("SchoolSVS.vbs", "run_schoolsvs.bat", "diagnostic.bat", "stop.vbs", "PORTABLE_README.txt")
