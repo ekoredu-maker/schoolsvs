@@ -14,6 +14,7 @@ from chungbuk_form12 import prepare_form12_upload
 from document_readiness import document_readiness
 from form10_markers import apply_form10_markers_to_hwpx
 from form10_student_rows import apply_student_rows_to_hwpx
+from form12_student_rows import apply_form12_student_rows_to_hwpx
 from hwpx_engine import (
     ANALYSIS_DIR,
     SOURCE_BUNDLE_DIR,
@@ -26,6 +27,7 @@ from hwpx_engine import (
     register_template,
 )
 from mapping_service import build_mapping_workspace, save_mapping, source_catalog
+from official_2026_bundle import register_official_2026_bundle
 from storage import backup_state, delete_case, get_case, get_value, init_db, list_cases, sync_state, upsert_case
 from student_profiles import consent_readiness, profile_readiness
 from template_builder import build_template, load_build_report
@@ -34,21 +36,25 @@ from workflow import calculate_deadlines, load_rules, validate_case, workflow_st
 ROOT = Path(__file__).resolve().parents[2]
 HOST = "127.0.0.1"
 REQUESTED_PORT = int(os.environ.get("SCHOOLSVS_PORT", "0") or "0")
-VERSION = "0.19.0"
+VERSION = "0.20.8"
 APP_ID = "schoolsvs-hybrid"
 STRICT_DOCUMENTS = {"form10_case_report", "form12_investigation_report"}
 
 FORM10_DIRECT_TOKENS = {
-    "INVESTIGATION_MODE", "NO2_ACTION_DATE", "VIOLENCE_TYPE", "SEPARATION_PERIOD",
-    "OTHER_MATTERS", "OTHER_SCHOOL_NAME", "OTHER_SCHOOL_NOTIFY_AT",
+    "INVESTIGATION_MODE", "NO2_ACTION_DATE", "VIOLENCE_TYPE", "SEPARATION", "SEPARATION_PERIOD",
+    "SEPARATION_PLACE", "SEPARATION_EXCEPTION_VICTIM_OPPOSED", "SEPARATION_EXCEPTION_NOT_EDUCATION",
+    "SEPARATION_EXCEPTION_EMERGENCY", "SEPARATION_EXCEPTION_OTHER_SCHOOL", "SEPARATION_EXCEPTION_OFF_CAMPUS",
+    "SEPARATION_EXCEPTION_SELF_RESOLUTION", "GUARDIAN_NOTICE_CHECKED", "INTERVIEW_AVAILABILITY_CHECKED",
+    "OTHER_MATTERS", "OTHER_SCHOOL_RELATED", "OTHER_SCHOOL_NAME", "OTHER_SCHOOL_NOTIFY_AT",
     "OTHER_SCHOOL_NOTIFY_METHOD", "OTHER_SCHOOL_RECIPIENT", "OTHER_SCHOOL_CONTACT",
     "VICTIM_INTERVIEW_TIME", "PERP_INTERVIEW_TIME", "VICTIM_RECOVERY_OPINION",
-    "PERP_RECOVERY_OPINION", "RELATED_STUDENT_ROWS",
+    "PERP_RECOVERY_OPINION", "RELATED_STUDENT_ROWS", "OFFICE_REPORT_DATE", "TEACHER_POSITION",
 }
+FORM12_DIRECT_TOKENS = {"RELATED_STUDENT_ROWS", "VICTIM_NAMES", "PERP_NAMES"}
 
 
 class Handler(BaseHTTPRequestHandler):
-    server_version = "SchoolSVS-Hybrid/0.19"
+    server_version = "SchoolSVS-Hybrid/0.20.8"
 
     def _json(self, payload, status=200):
         body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
@@ -88,15 +94,7 @@ class Handler(BaseHTTPRequestHandler):
 
         if path == "/api/health":
             rules = load_rules()
-            return self._json({
-                "ok": True,
-                "appId": APP_ID,
-                "engine": "python",
-                "version": VERSION,
-                "port": int(self.server.server_address[1]),
-                "rulesVersion": rules.get("version"),
-                "documentRegistryVersion": load_registry().get("version"),
-            })
+            return self._json({"ok": True, "appId": APP_ID, "engine": "python", "version": VERSION, "port": int(self.server.server_address[1]), "rulesVersion": rules.get("version"), "documentRegistryVersion": load_registry().get("version")})
         if path == "/api/rules":
             return self._json({"ok": True, "rules": load_rules()})
         if path == "/api/documents":
@@ -181,6 +179,17 @@ class Handler(BaseHTTPRequestHandler):
                     return self._json({"ok": False, "error": "점검할 사안 데이터가 없습니다."}, 400)
                 settings = data.get("settings") if isinstance(data.get("settings"), dict) else get_value("settings", {})
                 return self._json({"ok": True, "readiness": document_readiness(key, case, settings=settings)})
+            if path == "/api/documents/register-official-2026-bundle":
+                file_name = str(data.get("fileName") or "").strip()
+                encoded = str(data.get("base64") or "")
+                if not encoded:
+                    return self._json({"ok": False, "error": "2026 공식 HWPX 서식모음집 파일이 필요합니다."}, 400)
+                try:
+                    file_bytes = base64.b64decode(encoded, validate=True)
+                except Exception:
+                    return self._json({"ok": False, "error": "HWPX 파일 데이터가 올바르지 않습니다."}, 400)
+                result = register_official_2026_bundle(file_bytes, file_name or "2026_공식_서식모음집.hwpx")
+                return self._json({"ok": True, **result})
             if path == "/api/documents/register":
                 key = str(data.get("documentKey") or "").strip()
                 file_name = str(data.get("fileName") or "").strip()
@@ -191,16 +200,13 @@ class Handler(BaseHTTPRequestHandler):
                     file_bytes = base64.b64decode(encoded, validate=True)
                 except Exception:
                     return self._json({"ok": False, "error": "HWPX 파일 데이터가 올바르지 않습니다."}, 400)
-
                 form12_source_meta = None
                 if key == "form12_investigation_report":
                     file_bytes, form12_source_meta = prepare_form12_upload(file_bytes, file_name, SOURCE_BUNDLE_DIR)
                 result = register_template(key, file_bytes, original_name=file_name)
                 if form12_source_meta:
                     ANALYSIS_DIR.mkdir(parents=True, exist_ok=True)
-                    (ANALYSIS_DIR / f"{key}_structure.json").write_text(
-                        json.dumps(form12_source_meta.get("structure") or {}, ensure_ascii=False, indent=2), encoding="utf-8"
-                    )
+                    (ANALYSIS_DIR / f"{key}_structure.json").write_text(json.dumps(form12_source_meta.get("structure") or {}, ensure_ascii=False, indent=2), encoding="utf-8")
                     result["sourcePreparation"] = form12_source_meta
                 return self._json({"ok": True, **result})
             if path == "/api/documents/mapping":
@@ -224,8 +230,13 @@ class Handler(BaseHTTPRequestHandler):
                     return self._json({"ok": False, "error": "문서 생성에 사용할 사안 데이터가 없습니다."}, 400)
                 settings = data.get("settings") if isinstance(data.get("settings"), dict) else get_value("settings", {})
                 readiness = document_readiness(key, case, settings=settings)
+                allow_experimental = bool(data.get("allowExperimental"))
+                experimental_ok = bool(readiness.get("contentReady") and readiness.get("templateReady") and readiness.get("builtTemplateReady") and readiness.get("officialSourceRegistered"))
+                experimental = False
                 if key in STRICT_DOCUMENTS and not readiness.get("ready"):
-                    return self._json({"ok": False, "error": f"{readiness.get('label') or key} 생성 전 필수 점검을 완료하세요.", "readiness": readiness}, 409)
+                    if not (allow_experimental and experimental_ok):
+                        return self._json({"ok": False, "error": f"{readiness.get('label') or key} 생성 전 필수 점검을 완료하세요.", "readiness": readiness}, 409)
+                    experimental = True
                 result = generate_document(key, case, settings=settings, output_name=data.get("outputName"))
                 student_rows = None
                 form10_markers = None
@@ -234,13 +245,16 @@ class Handler(BaseHTTPRequestHandler):
                     student_rows = apply_student_rows_to_hwpx(result.output_path, case)
                     form10_markers = apply_form10_markers_to_hwpx(result.output_path, case)
                     missing_tokens = [token for token in missing_tokens if token not in FORM10_DIRECT_TOKENS]
+                elif key == "form12_investigation_report":
+                    student_rows = apply_form12_student_rows_to_hwpx(result.output_path, case)
+                    missing_tokens = [token for token in missing_tokens if token not in FORM12_DIRECT_TOKENS]
                 relative = result.output_path.relative_to(ROOT).as_posix()
-                return self._json({
-                    "ok": True, "documentKey": result.document_key, "fileName": result.output_path.name,
-                    "downloadUrl": "/" + relative, "replacedTokens": result.replaced_tokens,
-                    "missingTokens": missing_tokens, "studentRows": student_rows, "form10Markers": form10_markers,
-                    "readiness": readiness, "warning": "템플릿 구조 검증 전 시험 생성본입니다." if missing_tokens else None,
-                })
+                warning = None
+                if experimental:
+                    warning = "공식 2026 HWPX 원본 기반 시험 생성본입니다. 한컴오피스 시각·인쇄 대조 전에는 제출용으로 사용하지 마세요."
+                elif missing_tokens:
+                    warning = "미치환 항목이 있어 확인이 필요합니다."
+                return self._json({"ok": True, "documentKey": result.document_key, "fileName": result.output_path.name, "downloadUrl": "/" + relative, "replacedTokens": result.replaced_tokens, "missingTokens": missing_tokens, "studentRows": student_rows, "form10Markers": form10_markers, "readiness": readiness, "experimental": experimental, "warning": warning})
             if path == "/api/state":
                 result = sync_state(data.get("cases") or [], data.get("counter", 1), data.get("settings") or {}, mode=str(data.get("mode") or "merge"), allow_empty_reconcile=bool(data.get("allowEmptyReconcile")))
                 return self._json({"ok": True, **result})
