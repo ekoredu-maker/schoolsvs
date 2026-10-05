@@ -13,13 +13,17 @@
   async function loadPolicy(){
     if(loading)return;loading=true;
     try{
-      const structure=await getJson(`/api/documents/structure?key=${encodeURIComponent(FORM10)}`);
-      const build=await getJson(`/api/documents/build-report?key=${encodeURIComponent(FORM10)}`);
+      const [structure,build,documents]=await Promise.all([
+        getJson(`/api/documents/structure?key=${encodeURIComponent(FORM10)}`),
+        getJson(`/api/documents/build-report?key=${encodeURIComponent(FORM10)}`),
+        getJson('/api/documents')
+      ]);
       const s=structure?.report||null,b=build?.report||null;
+      const d=(documents?.documents||[]).find(x=>x.key===FORM10)||null;
       policy={
-        structure:s,build:b,
-        officialVerified:!!(s?.official2026HwpxVerified||b?.official2026HwpxVerified||b?.adaptiveOfficial2026Verified),
-        adaptive: b?.sourceKind==='2026_pdf_adaptive'||s?.sourceYearDetected===2025||s?.reference2025Match===true,
+        structure:s,build:b,direct:!!d?.directOfficial2026,
+        officialVerified:!!(d?.directOfficial2026||s?.official2026HwpxVerified||b?.official2026HwpxVerified||b?.adaptiveOfficial2026Verified),
+        adaptive:b?.sourceKind==='2026_pdf_adaptive'||s?.sourceYearDetected===2025||s?.reference2025Match===true,
       };
     }finally{loading=false;apply();}
   }
@@ -34,7 +38,9 @@
     const gen=card.querySelector(`[data-generate="${FORM10}"]`);
     if(policy?.officialVerified){
       gate.className='fidelityGate ok';
-      gate.innerHTML='<b>공식 2026 HWPX 검증 완료</b><br>등록한 공식 원본의 구조를 기준으로 출력합니다.';
+      gate.innerHTML=policy.direct
+        ? '<b>2026 공식 HWPX 직접생성 모드</b><br>확인된 공식 구조를 유지하고 값 셀만 Python이 입력합니다.'
+        : '<b>공식 2026 HWPX 검증 완료</b><br>등록한 공식 원본의 구조를 기준으로 출력합니다.';
       card.dataset.fidelityLocked='0';
       if(gen&&gen.textContent.includes('잠금'))gen.textContent='현재 사안으로 생성';
       return;
@@ -44,11 +50,12 @@
     const basis=policy?.adaptive
       ? '현재 등록본은 2025 HWPX 구조 또는 2026 PDF 기반 적응형 자료입니다.'
       : '공식 2026 HWPX 원본 여부가 아직 확인되지 않았습니다.';
-    gate.innerHTML=`<b>학교 제출용 HWPX 생성 잠금</b><br>${basis}<br>공식 2026 HWPX 원본을 등록하고 구조를 1:1 검증한 뒤 정식 생성을 활성화합니다.`;
+    gate.innerHTML=`<b>학교 제출용 HWPX 생성 잠금</b><br>${basis}<br>공식 2026 HWPX 원본을 등록하고 구조를 확인한 뒤 정식 생성을 활성화합니다.`;
     if(gen){gen.disabled=true;gen.textContent='공식 서식 확인 후 생성';}
   }
   const observer=new MutationObserver(()=>{apply();if(!policy)loadPolicy();});
   observer.observe(list,{childList:true,subtree:true});
+  document.addEventListener('schoolsvs:template-built',()=>{policy=null;loadPolicy();});
   setTimeout(loadPolicy,300);
 
   if(!document.querySelector('script[data-schoolsvs-backup-refresh]')){
