@@ -57,12 +57,12 @@ def official_split_like_xml() -> bytes:
             "아동학대(접수여부:  )  ※중복체크 가능(", "■, □)")),
         row(cell(0, "관련학생"), cell(1, "학교명 학번 성명 성별 보호자 통보여부")),
         row(cell(0, "기타 사항"), cell(1, "경찰신고, 고소, 소송 여부 등")),
-        row(cell(0, "타학교 관련 여부"), cell(1, "관련학교명"), cell(3, "안내문")),
-        row(cell(1, "통보여부"), cell(3, "(통보 일시, 방법) (통보 받은 사람) (연락처)")),
-        row(cell(0, "전담조사관 면담조사 가능시간"), cell(1, "피해 관련"), cell(3, "※ 학교자체 조사인 경우 빈칸")),
-        row(cell(1, "가해 관련"), cell(3, "※ 학교자체 조사인 경우 빈칸")),
-        row(cell(0, "관계회복 프로그램 관련 학생 의견"), cell(1, "피해 관련"), cell(3, "예시 피해")),
-        row(cell(1, "가해 관련"), cell(3, "예시 가해")),
+        row(cell(0, "타학교 관련 여부"), cell(1, "관련학교명"), cell(4, "안내문")),
+        row(cell(1, "통보여부"), cell(4, "(통보 일시, 방법) (통보 받은 사람) (연락처)")),
+        row(cell(0, "전담조사관 면담조사 가능시간"), cell(1, "피해 관련"), cell(4, "※ 학교자체 조사인 경우 빈칸")),
+        row(cell(1, "가해 관련"), cell(4, "※ 학교자체 조사인 경우 빈칸")),
+        row(cell(0, "관계회복 프로그램 관련 학생 의견"), cell(1, "피해 관련"), cell(4, "예시 피해")),
+        row(cell(1, "가해 관련"), cell(4, "예시 가해")),
     ])
     return ET.tostring(root, encoding="utf-8", xml_declaration=True)
 
@@ -79,7 +79,14 @@ def case_data() -> dict:
             "violenceTypes": ["신체폭력", "사이버폭력"],
             "separationExceptions": {"differentSchool": True},
             "otherMatters": "112 신고 완료",
-            "otherSchoolRelated": False,
+            "otherSchoolRelated": True,
+            "otherSchoolName": "타학교",
+            "otherSchoolNotifyAt": "2026-10-05T10:10",
+            "otherSchoolNotifyMethod": "유선",
+            "otherSchoolRecipient": "김교사",
+            "otherSchoolContact": "010-0000-0000",
+            "victimInterviewTime": "10.6. 10:00",
+            "perpInterviewTime": "10.6. 14:00",
             "victimRecoveryOpinion": "사과 시 참여 의사 있음",
             "perpRecoveryOpinion": "대화 의사 있음",
         }},
@@ -100,6 +107,9 @@ class OfficialSplitNodeViolenceTests(unittest.TestCase):
 
         joined = "|".join(nodes)
         self.assertNotIn("■신체폭력 ■", joined)
+        self.assertIn("타학교", joined)
+        self.assertIn("10.6. 10:00", joined)
+        self.assertIn("사과 시 참여 의사 있음", joined)
         self.assertEqual(report["violence"]["missingOptions"], [])
         self.assertEqual(
             report["violence"]["markedOptions"],
