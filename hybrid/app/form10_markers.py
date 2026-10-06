@@ -107,14 +107,42 @@ def _mark_violence(table:ET.Element,case:dict[str,Any])->dict[str,Any]:
     row=_row(table,"유형","신체폭력")
     if row is None: raise ValueError("학교폭력 유형 행을 찾지 못했습니다.")
     selected,detail_required=_selected_violence_types(case); nodes=_texts(row)
-    target=next((n for n in nodes if "신체폭력" in (n.text or "") and "언어폭력" in (n.text or "")),None)
-    if target is None: raise ValueError("학교폭력 유형 체크 영역을 찾지 못했습니다.")
-    target.text=" ".join(("■" if item in selected else "□")+item+("(접수여부:  )" if item=="아동학대" else "") for item in VIOLENCE_OPTIONS)+"  ※중복체크 가능(■, □)"
-    found=False
-    for node in nodes:
-        if node is target: found=True; continue
-        if found and any(x in (node.text or "") for x in ("아동학대(접수여부","성폭력(접수여부")): node.text=""
-    return {"selected":selected,"detailRequired":detail_required}
+    marked:dict[str,bool]={}
+    for item in VIOLENCE_OPTIONS:
+        success=False
+        # 1) 구형/테스트 서식처럼 '□신체폭력'이 같은 텍스트 노드에 있는 경우
+        pattern=re.compile(r"([□■])\\s*("+re.escape(item)+r")")
+        for node in nodes:
+            value=node.text or ""
+            if item not in value:
+                continue
+            replacement=("■" if item in selected else "□")+r"\\2"
+            updated,count=pattern.subn(replacement,value,count=1)
+            if count:
+                node.text=updated
+                success=True
+                break
+        # 2) 2026 공식 HWPX처럼 체크박스와 항목명이 서로 다른 텍스트 노드인 경우
+        if not success:
+            label_index=next((i for i,node in enumerate(nodes) if item in (node.text or "")),None)
+            if label_index is not None:
+                for idx in range(label_index-1,max(-1,label_index-5),-1):
+                    value=nodes[idx].text or ""
+                    if re.fullmatch(r"\\s*[□■]\\s*",value):
+                        prefix=value[:len(value)-len(value.lstrip())]
+                        suffix=value[len(value.rstrip()):]
+                        nodes[idx].text=prefix+("■" if item in selected else "□")+suffix
+                        success=True
+                        break
+        marked[item]=success
+    if not any(marked.values()):
+        raise ValueError("학교폭력 유형 체크 영역을 찾지 못했습니다.")
+    return {
+        "selected":selected,
+        "detailRequired":detail_required,
+        "markedOptions":[item for item,ok in marked.items() if ok],
+        "missingOptions":[item for item,ok in marked.items() if not ok],
+    }
 
 def _fill_atoz_cells(table:ET.Element,case:dict[str,Any])->dict[str,Any]:
     atoz=_atoz(case); report={}
