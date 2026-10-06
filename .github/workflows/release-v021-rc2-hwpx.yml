@@ -26,8 +26,19 @@ jobs:
         shell: powershell
         run: |
           python -m compileall -q hybrid\app hybrid\tests
-          python -m unittest discover -s hybrid\tests -p 'test_*.py' -v
-          if ($LASTEXITCODE -ne 0) { throw 'Hybrid regression tests failed.' }
+          python -m unittest discover -s hybrid\tests -p 'test_*.py' -v 2>&1 | Tee-Object -FilePath 'release-regression-output.txt'
+          if ($LASTEXITCODE -ne 0) {
+            Get-Content 'release-regression-output.txt'
+            throw 'Hybrid regression tests failed.'
+          }
+
+      - name: Upload Windows regression log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rc2-windows-regression-output
+          path: release-regression-output.txt
+          if-no-files-found: warn
 
       - name: Build portable v0.21.0
         shell: powershell
