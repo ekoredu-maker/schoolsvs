@@ -21,6 +21,12 @@ def _cell_by_col(row: ET.Element, col: int) -> ET.Element | None:
         addr = next((x for x in cell if _local(x.tag)=="cellAddr"), None)
         if addr is not None and int(addr.get("colAddr","-1"))==col: return cell
     return None
+def _first_cell_by_cols(row: ET.Element | None,*cols:int)->ET.Element|None:
+    if row is None:return None
+    for col in cols:
+        cell=_cell_by_col(row,col)
+        if cell is not None:return cell
+    return None
 
 def _set_cell_text(cell: ET.Element, value: str) -> None:
     nodes=_texts(cell)
@@ -153,10 +159,10 @@ def _fill_atoz_cells(table:ET.Element,case:dict[str,Any])->dict[str,Any]:
         report["otherMatters"]=bool(value)
     other_school=_row(table,"타학교 관련 여부","관련학교명"); notice=_row(table,"통보여부","통보 일시"); related=bool(atoz.get("otherSchoolRelated"))
     if other_school is not None:
-        cell=_cell_by_col(other_school,3)
+        cell=_first_cell_by_cols(other_school,4,3)
         if cell is not None:_set_cell_text(cell,str(atoz.get("otherSchoolName") or "").strip() if related else "")
     if notice is not None:
-        cell=_cell_by_col(notice,3)
+        cell=_first_cell_by_cols(notice,4,3)
         if cell is not None:
             pieces=[_format_datetime(atoz.get("otherSchoolNotifyAt")),str(atoz.get("otherSchoolNotifyMethod") or "").strip(),str(atoz.get("otherSchoolRecipient") or "").strip(),str(atoz.get("otherSchoolContact") or "").strip()] if related else []
             _set_cell_text(cell," / ".join(x for x in pieces if x))
@@ -165,16 +171,18 @@ def _fill_atoz_cells(table:ET.Element,case:dict[str,Any])->dict[str,Any]:
     if victim is not None:
         rows=_rows(table); idx=rows.index(victim); perp=rows[idx+1] if idx+1<len(rows) and "가해 관련" in _text(rows[idx+1]) else None
     mode=str(atoz.get("investigationMode") or "")
-    if victim is not None and _cell_by_col(victim,3) is not None:_set_cell_text(_cell_by_col(victim,3),str(atoz.get("victimInterviewTime") or "").strip() if mode=="investigator" else "")
-    if perp is not None and _cell_by_col(perp,3) is not None:_set_cell_text(_cell_by_col(perp,3),str(atoz.get("perpInterviewTime") or "").strip() if mode=="investigator" else "")
+    victim_cell=_first_cell_by_cols(victim,4,3)
+    perp_cell=_first_cell_by_cols(perp,4,3)
+    if victim_cell is not None:_set_cell_text(victim_cell,str(atoz.get("victimInterviewTime") or "").strip() if mode=="investigator" else "")
+    if perp_cell is not None:_set_cell_text(perp_cell,str(atoz.get("perpInterviewTime") or "").strip() if mode=="investigator" else "")
     report["interviewMode"]=mode
     victim_op=_row(table,"관계회복 프로그램 관련 학생 의견","피해 관련"); perp_op=None
     if victim_op is not None:
         rows=_rows(table); idx=rows.index(victim_op); perp_op=rows[idx+1] if idx+1<len(rows) and "가해 관련" in _text(rows[idx+1]) else None
-        cell=_cell_by_col(victim_op,3)
+        cell=_first_cell_by_cols(victim_op,4,3)
         if cell is not None:_set_cell_text(cell,str(atoz.get("victimRecoveryOpinion") or "").strip())
     if perp_op is not None:
-        cell=_cell_by_col(perp_op,3)
+        cell=_first_cell_by_cols(perp_op,4,3)
         if cell is not None:_set_cell_text(cell,str(atoz.get("perpRecoveryOpinion") or "").strip())
     report["recoveryOpinion"]=bool(victim_op); return report
 
