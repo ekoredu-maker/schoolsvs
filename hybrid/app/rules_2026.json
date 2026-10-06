@@ -1,0 +1,114 @@
+{
+  "version": "2026.1-chungbuk-atoz-verified",
+  "notice": "2026 충청북도교육청 학교폭력 사안처리 세부설명 A to Z(Q&A 포함)를 기준자료로 반영. 자동판정이 위험한 자체해결·종결 여부는 체크리스트와 담당자 확인 방식으로 지원한다.",
+  "source": {
+    "title": "2026. 학교폭력 사안처리 세부설명 A to Z (Q&A 포함)",
+    "publisher": "충청북도교육청 인성시민과"
+  },
+  "workflow": [
+    "접수",
+    "초기대응",
+    "사실조사",
+    "전담기구",
+    "심의",
+    "조치이행",
+    "종결"
+  ],
+  "deadlines": {
+    "office_report": {
+      "label": "교육(지원)청 사안접수 보고",
+      "base_field": "recvAt",
+      "hours": 48,
+      "completion_field": "officeDate",
+      "completion_status_field": "officeReport",
+      "completion_status_value": "보고완료",
+      "source": "충북 A to Z p.1, p.13, p.39",
+      "verified": true,
+      "note": "주말·공휴일 포함 48시간 이내. 부득이하게 공문보고가 불가하면 교육지원청 업무담당자에게 소통메신저 또는 유선 보고."
+    },
+    "separation_decision": {
+      "label": "가해자와 피해학생 분리기간·방법 결정",
+      "base_field": "recvAt",
+      "hours": 24,
+      "completion_field": "separation",
+      "source": "충북 A to Z p.2, p.29",
+      "verified": true,
+      "note": "학교장 인지 후 24시간 이내 분리방법 결정. 실제 기준시각은 학교장 인지시각이며, 프로그램에 별도 값이 없으면 접수시각을 보조기준으로 사용한다."
+    }
+  },
+  "procedural_deadlines": {
+    "school_case_process": {
+      "label": "단위학교 사안처리 완료",
+      "base": "사안접수일",
+      "days": 14,
+      "extension_days": 7,
+      "relationship_recovery_max_days": 28,
+      "source": "충북 A to Z p.4, p.61, Q&A p.140",
+      "verified": true,
+      "completion_scope": ["사안조사", "전담기구 심의", "학교장 자체해결 결과보고 또는 심의위원회 개최 요청"],
+      "note": "필요 시 학교장 내부결재로 최대 7일 연기. 관계회복 숙려제도 운영 시 최대 28일까지 전담기구 절차 유예 가능."
+    },
+    "committee_after_request": {
+      "label": "교육지원청 심의위원회 개최",
+      "base": "심의위원회 개최 요청 공문 접수일",
+      "days": 21,
+      "extension_days": 7,
+      "source": "충북 A to Z p.4, Q&A p.140",
+      "verified": true
+    }
+  },
+  "limits": {
+    "separation_max_days": {
+      "value": 7,
+      "unit": "days",
+      "source": "충북 A to Z p.23, p.29",
+      "verified": true,
+      "note": "초일 산입, 토·일·공휴일 포함. 교육활동 중이 아닌 시점 인지 등은 A to Z 세부 계산기준을 따름."
+    }
+  },
+  "mandatory_actions": {
+    "perp_emergency_measure_2": {
+      "label": "가해관련학생 긴급선도조치 제2호",
+      "timing": "지체 없이",
+      "source": "충북 A to Z p.2, p.23, p.31",
+      "verified": true,
+      "note": "학교폭력을 인지한 경우 제17조제4항에 따른 제2호 조치를 지체 없이 시행. A to Z에서는 접수보고서 기재로 내부결재 및 별도 보고를 갈음한다고 안내."
+    }
+  },
+  "self_resolution": {
+    "requires_human_review": true,
+    "criteria": [
+      "2주 이상의 신체적·정신적 치료가 필요한 진단서를 발급(제출)받지 않은 경우",
+      "재산상 피해가 없거나 즉각 복구되거나 복구 약속이 있는 경우",
+      "학교폭력이 지속적이지 않은 경우",
+      "학교폭력 신고·진술·자료제공 등에 대한 보복행위가 아닌 경우"
+    ],
+    "additional_requirements": ["피해학생 및 보호자 동의", "학교장 결정"],
+    "source": "충북 A to Z p.19, p.62",
+    "verified": true
+  },
+  "school_close": {
+    "requires_human_review": true,
+    "examples": ["학교폭력이 아닌 것으로 확인된 사안", "가해자가 미상 또는 학생이 아닌 사안에서 피해학생 측이 보호조치를 원하지 않는 경우"],
+    "source": "충북 A to Z p.2~4, p.62, Q&A",
+    "verified": true
+  },
+  "required_fields": {
+    "base": ["id", "caseNo", "status", "recvAt", "incidentDate", "incidentPlace", "reportType", "violenceType", "summary"],
+    "close": ["closedDate"]
+  },
+  "local_rules": {
+    "region": "충청북도",
+    "status": "verified_from_2026_atoz",
+    "items": [
+      "사안접수 48시간 보고",
+      "학교장 인지 후 24시간 이내 분리방법 결정",
+      "즉시분리 최대 7일",
+      "가해관련학생 긴급선도조치 제2호 지체 없이 시행",
+      "사안접수일부터 14일 이내 단위학교 절차 완료, 필요 시 7일 연기",
+      "관계회복 숙려제도 운영 시 최대 28일",
+      "학교장 자체해결 4가지 객관적 요건 + 피해측 동의 + 학교장 결정",
+      "서식3 신고접수대장 수기 작성·수기 결재, 컴퓨터 저장 금지"
+    ]
+  }
+}

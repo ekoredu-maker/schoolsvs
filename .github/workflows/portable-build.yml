@@ -1,0 +1,39 @@
+name: SchoolSVS Portable Build
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - hybrid-v0.1
+    paths:
+      - 'hybrid/**'
+      - 'index.html'
+      - '.github/workflows/portable-build.yml'
+
+jobs:
+  build-windows-portable:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build portable ZIP
+        shell: powershell
+        run: .\hybrid\build_portable.ps1 -PythonVersion '3.11.9' -PackageVersion '0.19.0'
+
+      - name: Inspect package
+        shell: powershell
+        run: |
+          if (-not (Test-Path '.\dist\SchoolSVS_Portable_v0.19.0.zip')) { throw 'Portable ZIP not found.' }
+          Get-Item '.\dist\SchoolSVS_Portable_v0.19.0.zip' | Format-List Name,Length,FullName
+          if (-not (Test-Path '.\dist\SchoolSVS_Portable\hybrid\runtime\python.exe')) { throw 'Embedded Python missing.' }
+          if (-not (Test-Path '.\dist\SchoolSVS_Portable\hybrid\app\main.py')) { throw 'main.py missing.' }
+          if (-not (Test-Path '.\dist\SchoolSVS_Portable\SchoolSVS.vbs')) { throw 'root launcher missing.' }
+
+      - name: Upload portable artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SchoolSVS_Portable_v0.19.0
+          path: dist/SchoolSVS_Portable_v0.19.0.zip
+          if-no-files-found: error
+          retention-days: 14

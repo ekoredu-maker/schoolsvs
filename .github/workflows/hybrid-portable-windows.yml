@@ -1,0 +1,106 @@
+name: SchoolSVS Windows Portable
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - hybrid-v0.1
+    paths:
+      - 'index.html'
+      - 'hybrid/**'
+      - '.github/workflows/hybrid-portable-windows.yml'
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build portable package
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          .\hybrid\build_portable.ps1 -PythonVersion '3.11.9' -PackageVersion '0.20.6'
+
+      - name: Verify embedded Python startup and localhost health
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $root = Join-Path $PWD 'dist\SchoolSVS_Portable'
+          $python = Join-Path $root 'hybrid\runtime\python.exe'
+          $pth = Join-Path $root 'hybrid\runtime\python311._pth'
+          $entry = Join-Path $root 'hybrid\app\portable_entry.py'
+          $diag = Join-Path $root 'hybrid\diagnostic.bat'
+          $stop = Join-Path $root 'hybrid\stop.vbs'
+          foreach ($item in @($python,$pth,$entry,$diag,$stop)) {
+            if (!(Test-Path $item)) { throw "Missing portable startup file: $item" }
+          }
+          $pthText = Get-Content $pth -Raw
+          if ($pthText -notmatch '\.\.\\app') { throw 'Embedded Python app path is missing from python311._pth.' }
+          & $python -c "import main,portable_entry,threading; assert main.APP_ID=='schoolsvs-hybrid'; s=portable_entry.create_portable_server(); t=threading.Thread(target=s.serve_forever,daemon=True); t.start(); p=s.server_address[1]; assert portable_entry._wait_for_health(p,3.0); s.shutdown(); t.join(2); s.server_close(); print('SchoolSVS localhost health startup OK')"
+          if ($LASTEXITCODE -ne 0) { throw 'Embedded Python could not pass localhost health startup test.' }
+
+      - name: Verify front-end hang guard
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $simple = Get-Content '.\hybrid\web\simple-ui.js' -Raw
+          if ($simple -match 'observe\(dock,\{[^\}]*attributes\s*:\s*true') {
+            throw 'simple-ui.js reintroduced an attribute-observer feedback loop.'
+          }
+          if ($simple -notmatch 'requestAnimationFrame\(updateCompact\)') {
+            throw 'simple-ui.js compact updates are not throttled.'
+          }
+          node --check '.\hybrid\web\simple-ui.js'
+          if ($LASTEXITCODE -ne 0) { throw 'simple-ui.js syntax check failed.' }
+
+      - name: Verify backup and sample-data features
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          node --check '.\hybrid\web\backup-ui.js'
+          if ($LASTEXITCODE -ne 0) { throw 'backup-ui.js syntax check failed.' }
+          $sample = Get-Content '.\hybrid\sample-data\schoolsvs_sample_cases.json' -Raw | ConvertFrom-Json
+          if ($sample.format -ne 'schoolsvs-backup') { throw 'Sample backup format marker missing.' }
+          if (!$sample.sampleData) { throw 'Sample data is not marked as sampleData.' }
+          if (@($sample.cases).Count -ne 3) { throw 'Sample data must contain exactly 3 cases.' }
+          $html = Get-Content '.\hybrid\web\index.html' -Raw
+          if ($html -notmatch 'backup-ui\.js') { throw 'backup-ui.js is not loaded by hybrid web shell.' }
+
+      - name: Verify ASCII-only launcher paths
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $root = Join-Path $PWD 'dist\SchoolSVS_Portable'
+          $required = @(
+            (Join-Path $root 'SchoolSVS.vbs'),
+            (Join-Path $root 'SchoolSVS_Diagnostic.bat'),
+            (Join-Path $root 'SchoolSVS_Stop.vbs'),
+            (Join-Path $root 'index.html'),
+            (Join-Path $root 'hybrid\SchoolSVS.vbs'),
+            (Join-Path $root 'hybrid\diagnostic.bat'),
+            (Join-Path $root 'hybrid\stop.vbs'),
+            (Join-Path $root 'hybrid\run_schoolsvs.bat'),
+            (Join-Path $root 'hybrid\PORTABLE_README.txt'),
+            (Join-Path $root 'hybrid\runtime\python.exe'),
+            (Join-Path $root 'hybrid\runtime\pythonw.exe'),
+            (Join-Path $root 'hybrid\app\main.py'),
+            (Join-Path $root 'hybrid\app\portable_entry.py'),
+            (Join-Path $root 'hybrid\web\backup-ui.js'),
+            (Join-Path $root 'hybrid\sample-data\schoolsvs_sample_cases.json')
+          )
+          foreach ($item in $required) {
+            if (!(Test-Path $item)) { throw "Missing portable file: $item" }
+          }
+          $rootDiag = Get-Content (Join-Path $root 'SchoolSVS_Diagnostic.bat') -Raw
+          if ($rootDiag -notmatch 'diagnostic\.bat') { throw 'Root diagnostic launcher is not using ASCII diagnostic.bat.' }
+          if (Test-Path (Join-Path $root 'hybrid\tests')) { throw 'Tests directory leaked into distribution.' }
+
+      - name: Upload ready-to-use portable folder
+        uses: actions/upload-artifact@v4
+        with:
+          name: SchoolSVS_Portable_Windows_RC8
+          path: dist/SchoolSVS_Portable/
+          if-no-files-found: error
+          retention-days: 14

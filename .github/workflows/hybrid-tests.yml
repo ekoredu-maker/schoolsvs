@@ -1,0 +1,42 @@
+name: SchoolSVS Hybrid Tests
+
+on:
+  push:
+    branches:
+      - hybrid-v0.1
+  pull_request:
+    paths:
+      - 'hybrid/**'
+      - '.github/workflows/hybrid-tests.yml'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Compile Python modules
+        run: python -m compileall -q hybrid/app hybrid/tests
+
+      - name: Check hybrid JavaScript syntax
+        run: find hybrid/web -maxdepth 1 -name '*.js' -print0 | xargs -0 -n1 node --check
+
+      - name: Run regression tests
+        shell: bash
+        run: |
+          set -o pipefail
+          python -m unittest discover -s hybrid/tests -p 'test_*.py' -v 2>&1 | tee hybrid-test-output.txt
+
+      - name: Upload regression log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hybrid-test-output
+          path: hybrid-test-output.txt
+          if-no-files-found: error
