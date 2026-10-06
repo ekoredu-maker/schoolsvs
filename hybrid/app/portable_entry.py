@@ -117,7 +117,7 @@ def _direct_generate(document_key: str, case: dict, settings: dict | None = None
 
 
 def _install_official_2026_runtime() -> None:
-    main.VERSION = "0.21.0-rc1"
+    main.VERSION = "0.21.0-rc2"
     main.document_readiness = _direct_readiness
     main.list_documents = _direct_list_documents
     main.generate_document = _direct_generate
@@ -129,7 +129,7 @@ _install_official_2026_runtime()
 
 
 class PortableHandler(main.Handler):
-    server_version = "SchoolSVS-Portable/0.21.0-rc1"
+    server_version = "SchoolSVS-Portable/0.21.0-rc2"
 
     def log_message(self, fmt, *args):
         message = fmt % args
