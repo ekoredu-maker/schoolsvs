@@ -28,4 +28,15 @@ jobs:
         run: find hybrid/web -maxdepth 1 -name '*.js' -print0 | xargs -0 -n1 node --check
 
       - name: Run regression tests
-        run: python -m unittest discover -s hybrid/tests -p 'test_*.py' -v
+        shell: bash
+        run: |
+          set -o pipefail
+          python -m unittest discover -s hybrid/tests -p 'test_*.py' -v 2>&1 | tee hybrid-test-output.txt
+
+      - name: Upload regression log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hybrid-test-output
+          path: hybrid-test-output.txt
+          if-no-files-found: error
