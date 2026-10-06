@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -21,8 +22,24 @@ def connect() -> sqlite3.Connection:
     return conn
 
 
+@contextmanager
+def connection():
+    """트랜잭션 종료뿐 아니라 SQLite 파일 핸들까지 반드시 닫는다.
+
+    sqlite3.Connection의 기본 context manager는 commit/rollback만 수행하고
+    close()는 호출하지 않는다. Windows 포터블 환경에서는 열린 연결이 DB 파일을
+    잠가 백업·테스트 임시폴더 삭제·프로그램 종료 후 이동을 방해할 수 있다.
+    """
+    conn = connect()
+    try:
+        with conn:
+            yield conn
+    finally:
+        conn.close()
+
+
 def init_db() -> None:
-    with connect() as conn:
+    with connection() as conn:
         conn.executescript(
             """
             PRAGMA journal_mode=WAL;
@@ -85,36 +102,36 @@ def _set_value_conn(conn: sqlite3.Connection, key: str, value: Any) -> None:
 
 
 def upsert_case(data: dict[str, Any]) -> dict[str, Any]:
-    with connect() as conn:
+    with connection() as conn:
         _upsert_case_conn(conn, data)
     return data
 
 
 def list_cases() -> list[dict[str, Any]]:
-    with connect() as conn:
+    with connection() as conn:
         rows = conn.execute("SELECT payload FROM cases ORDER BY updated_at DESC").fetchall()
     return [json.loads(r["payload"]) for r in rows]
 
 
 def get_case(case_id: str) -> dict[str, Any] | None:
-    with connect() as conn:
+    with connection() as conn:
         row = conn.execute("SELECT payload FROM cases WHERE id=?", (case_id,)).fetchone()
     return json.loads(row["payload"]) if row else None
 
 
 def delete_case(case_id: str) -> bool:
-    with connect() as conn:
+    with connection() as conn:
         cur = conn.execute("DELETE FROM cases WHERE id=?", (case_id,))
         return cur.rowcount > 0
 
 
 def set_value(key: str, value: Any) -> None:
-    with connect() as conn:
+    with connection() as conn:
         _set_value_conn(conn, key, value)
 
 
 def get_value(key: str, fallback: Any = None) -> Any:
-    with connect() as conn:
+    with connection() as conn:
         row = conn.execute("SELECT value FROM kv WHERE key=?", (key,)).fetchone()
     return json.loads(row["value"]) if row else fallback
 
@@ -181,7 +198,7 @@ def sync_state(
         backup = backup_state("state_reconcile_before_delete")
 
     merged_settings = _merge_settings_preserving_hybrid(settings)
-    with connect() as conn:
+    with connection() as conn:
         for case in normalized:
             _upsert_case_conn(conn, case)
         if mode == "reconcile" and removed_ids:
