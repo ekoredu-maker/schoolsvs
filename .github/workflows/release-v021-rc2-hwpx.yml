@@ -22,15 +22,17 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Run HWPX regression tests
-        shell: powershell
+      - name: Compile Python modules on Windows
+        shell: cmd
+        run: python -m compileall -q hybrid\app hybrid\tests
+
+      - name: Run HWPX regression tests on Windows
+        shell: cmd
         run: |
-          python -m compileall -q hybrid\app hybrid\tests
-          python -m unittest discover -s hybrid\tests -p 'test_*.py' -v 2>&1 | Tee-Object -FilePath 'release-regression-output.txt'
-          if ($LASTEXITCODE -ne 0) {
-            Get-Content 'release-regression-output.txt'
-            throw 'Hybrid regression tests failed.'
-          }
+          python -m unittest discover -s hybrid\tests -p "test_*.py" -v > release-regression-output.txt 2>&1
+          set TEST_EXIT=%ERRORLEVEL%
+          type release-regression-output.txt
+          exit /b %TEST_EXIT%
 
       - name: Upload Windows regression log
         if: always()
