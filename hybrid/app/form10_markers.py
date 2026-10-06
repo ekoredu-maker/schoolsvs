@@ -142,26 +142,31 @@ def _mark_violence(table:ET.Element,case:dict[str,Any])->dict[str,Any]:
     marked:dict[str,bool]={}
     for item in VIOLENCE_OPTIONS:
         success=False
-        # 구형/테스트 서식처럼 '□신체폭력'이 같은 텍스트 노드에 있는 경우
-        pattern=re.compile(r"([□■])\\s*("+re.escape(item)+r")")
+        # 2025/시험 구조: 체크박스와 항목명이 같은 텍스트 노드.
+        # 역참조 문자열을 쓰지 않고 함수형 치환으로 이스케이프 회귀를 차단한다.
+        pattern=re.compile(r"([□■])\s*("+re.escape(item)+r")")
         for node in nodes:
             value=node.text or ""
             if item not in value:continue
-            replacement=("■" if item in selected else "□")+r"\\2"
-            updated,count=pattern.subn(replacement,value,count=1)
+            updated,count=pattern.subn(
+                lambda match:("■" if item in selected else "□")+match.group(2),
+                value,
+                count=1,
+            )
             if count:
                 node.text=updated;success=True;break
-        # 2026 공식 HWPX처럼 체크박스와 항목명이 서로 다른 텍스트 노드인 경우
+        # 2026 공식 HWPX: 체크박스와 항목명이 서로 다른 텍스트 노드.
+        # 정규식 없이 체크박스 노드 자체를 판정해 원본 글자모양/노드 구조를 보존한다.
         if not success:
             indexes=[i for i,node in enumerate(nodes) if item in (node.text or "")]
             for label_index in indexes:
                 for idx in range(label_index-1,max(-1,label_index-5),-1):
                     value=nodes[idx].text or ""
-                    if re.fullmatch(r"\\s*[□■]\\s*",value):
-                        leading=value[:len(value)-len(value.lstrip())]
-                        trailing=value[len(value.rstrip()):]
-                        nodes[idx].text=leading+("■" if item in selected else "□")+trailing
-                        success=True;break
+                    if value.strip() not in {"□","■"}:continue
+                    leading=value[:len(value)-len(value.lstrip())]
+                    trailing=value[len(value.rstrip()):]
+                    nodes[idx].text=leading+("■" if item in selected else "□")+trailing
+                    success=True;break
                 if success:break
         marked[item]=success
     if not any(marked.values()):
