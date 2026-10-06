@@ -109,37 +109,60 @@ def _mark_separation(table:ET.Element,case:dict[str,Any])->dict[str,Any]:
     nodes=_texts(reason_cell); marked={}
     for key,phrase in EXCEPTION_KEYS.items(): marked[key]=_mark_bracket_near(nodes,phrase,separation=="즉시분리 미시행" and bool(exceptions.get(key)))
     return {"mode":separation,"period":period,"exceptions":exceptions,"marked":marked}
-def _mark_violence(table:ET.Element,case:dict[str,Any])->dict[str,Any]:
+def _violence_scope(table:ET.Element)->ET.Element:
+    # 2026 공식 HWPX는 '사실 확인 내용' 셀 안에 5행×2열 중첩표를 두고
+    # 그 마지막 '유형' 행의 값 셀에 체크박스와 항목명을 분리된 텍스트 노드로 저장한다.
+    for nested in table.iter():
+        if nested is table or _local(nested.tag)!="tbl":continue
+        for row in _rows(nested):
+            value=_text(row)
+            if "유형" not in value or "신체폭력" not in value:continue
+            candidates=[]
+            for cell in _cells(row):
+                score=sum(1 for item in VIOLENCE_OPTIONS if item in _text(cell))
+                if score:candidates.append((score,cell))
+            if candidates:
+                candidates.sort(key=lambda item:item[0],reverse=True)
+                return candidates[0][1]
+    # 2025 적응형/단위테스트처럼 유형 값이 본문 행의 별도 셀에 있는 경우도 지원한다.
     row=_row(table,"유형","신체폭력")
-    if row is None: raise ValueError("학교폭력 유형 행을 찾지 못했습니다.")
-    selected,detail_required=_selected_violence_types(case); nodes=_texts(row)
+    if row is None:raise ValueError("학교폭력 유형 행을 찾지 못했습니다.")
+    candidates=[]
+    for cell in _cells(row):
+        score=sum(1 for item in VIOLENCE_OPTIONS if item in _text(cell))
+        if score:candidates.append((score,cell))
+    if candidates:
+        candidates.sort(key=lambda item:item[0],reverse=True)
+        return candidates[0][1]
+    return row
+
+def _mark_violence(table:ET.Element,case:dict[str,Any])->dict[str,Any]:
+    scope=_violence_scope(table)
+    selected,detail_required=_selected_violence_types(case); nodes=_texts(scope)
     marked:dict[str,bool]={}
     for item in VIOLENCE_OPTIONS:
         success=False
-        # 1) 구형/테스트 서식처럼 '□신체폭력'이 같은 텍스트 노드에 있는 경우
+        # 구형/테스트 서식처럼 '□신체폭력'이 같은 텍스트 노드에 있는 경우
         pattern=re.compile(r"([□■])\\s*("+re.escape(item)+r")")
         for node in nodes:
             value=node.text or ""
-            if item not in value:
-                continue
+            if item not in value:continue
             replacement=("■" if item in selected else "□")+r"\\2"
             updated,count=pattern.subn(replacement,value,count=1)
             if count:
-                node.text=updated
-                success=True
-                break
-        # 2) 2026 공식 HWPX처럼 체크박스와 항목명이 서로 다른 텍스트 노드인 경우
+                node.text=updated;success=True;break
+        # 2026 공식 HWPX처럼 체크박스와 항목명이 서로 다른 텍스트 노드인 경우
         if not success:
-            label_index=next((i for i,node in enumerate(nodes) if item in (node.text or "")),None)
-            if label_index is not None:
+            indexes=[i for i,node in enumerate(nodes) if item in (node.text or "")]
+            for label_index in indexes:
                 for idx in range(label_index-1,max(-1,label_index-5),-1):
                     value=nodes[idx].text or ""
                     if re.fullmatch(r"\\s*[□■]\\s*",value):
-                        prefix=value[:len(value)-len(value.lstrip())]
-                        suffix=value[len(value.rstrip()):]
-                        nodes[idx].text=prefix+("■" if item in selected else "□")+suffix
-                        success=True
-                        break
+                        leading=value[:len(value)-len(value.lstrip())]
+                        trailing=value[len(value.rstrip()):]
+                        nodes[idx].text=leading+("■" if item in selected else "□")+trailing
+                        success=True;break
+                if success:break
         marked[item]=success
     if not any(marked.values()):
         raise ValueError("학교폭력 유형 체크 영역을 찾지 못했습니다.")
